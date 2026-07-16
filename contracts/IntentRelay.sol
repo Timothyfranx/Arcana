@@ -26,6 +26,7 @@ contract IntentRelay {
 
     address public immutable noxCompute;
     address public immutable relayer;
+    address public immutable priceOracle;
     uint256 public nextIntentId;
 
     mapping(uint256 => Intent) public intents;
@@ -39,6 +40,7 @@ contract IntentRelay {
 
     error OnlyRelayer();
     error OnlyOwner();
+    error OnlyOracle();
     error InvalidStatus(Status expected, Status actual);
     error NoActiveCheck();
     error InvalidProofLength();
@@ -49,9 +51,15 @@ contract IntentRelay {
         _;
     }
 
-    constructor(address _noxCompute, address _relayer) {
+    modifier onlyOracle() {
+        if (msg.sender != priceOracle) revert OnlyOracle();
+        _;
+    }
+
+    constructor(address _noxCompute, address _relayer, address _priceOracle) {
         noxCompute = _noxCompute;
         relayer = _relayer;
+        priceOracle = _priceOracle;
     }
 
     /**
@@ -110,7 +118,7 @@ contract IntentRelay {
         bytes32 currentValueHandle,
         address currentValueOwner,
         bytes calldata currentValueProof
-    ) external {
+    ) external onlyOracle {
         Intent storage intent = intents[intentId];
         if (intent.status != Status.Pending) revert InvalidStatus(Status.Pending, intent.status);
 

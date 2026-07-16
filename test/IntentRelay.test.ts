@@ -40,7 +40,11 @@ describe("IntentRelay Integration Test", function () {
     // 1. Deploy IntentRelay and MockSwapContract
     console.log("Deploying IntentRelay...");
     const IntentRelayFactory = await ethers.getContractFactory("IntentRelay");
-    const intentRelay = await IntentRelayFactory.deploy(NOX_COMPUTE_ADDRESS, await relayer.getAddress());
+    const intentRelay = await IntentRelayFactory.deploy(
+      NOX_COMPUTE_ADDRESS,
+      await relayer.getAddress(),
+      await keeper.getAddress()
+    );
     await intentRelay.waitForDeployment();
     const intentRelayAddress = await intentRelay.getAddress();
     console.log(`IntentRelay deployed at: ${intentRelayAddress}`);

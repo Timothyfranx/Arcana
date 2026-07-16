@@ -6,7 +6,7 @@ import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, Typed
   
 
   export interface IntentRelayInterface extends Interface {
-    getFunction(nameOrSignature: "cancelIntent" | "getCalldataHandles" | "intents" | "markExecuted" | "nextIntentId" | "noxCompute" | "relayer" | "requestTriggerCheck" | "submitIntent" | "verifyTrigger"): FunctionFragment;
+    getFunction(nameOrSignature: "cancelIntent" | "getCalldataHandles" | "intents" | "markExecuted" | "nextIntentId" | "noxCompute" | "priceOracle" | "relayer" | "requestTriggerCheck" | "submitIntent" | "verifyTrigger"): FunctionFragment;
 
     getEvent(nameOrSignatureOrTopic: "IntentCancelled" | "IntentExecuted" | "IntentSubmitted" | "IntentTriggered" | "TriggerCheckFailed" | "TriggerCheckRequested"): EventFragment;
 
@@ -16,6 +16,7 @@ encodeFunctionData(functionFragment: 'intents', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'markExecuted', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'nextIntentId', values?: undefined): string;
 encodeFunctionData(functionFragment: 'noxCompute', values?: undefined): string;
+encodeFunctionData(functionFragment: 'priceOracle', values?: undefined): string;
 encodeFunctionData(functionFragment: 'relayer', values?: undefined): string;
 encodeFunctionData(functionFragment: 'requestTriggerCheck', values: [BigNumberish, BytesLike, AddressLike, BytesLike]): string;
 encodeFunctionData(functionFragment: 'submitIntent', values: [BytesLike, BigNumberish, BytesLike, BytesLike[], BigNumberish, BytesLike, BytesLike, BytesLike[]]): string;
@@ -27,6 +28,7 @@ decodeFunctionResult(functionFragment: 'intents', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'markExecuted', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'nextIntentId', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'noxCompute', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'priceOracle', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'relayer', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'requestTriggerCheck', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'submitIntent', data: BytesLike): Result;
@@ -188,6 +190,14 @@ decodeFunctionResult(functionFragment: 'verifyTrigger', data: BytesLike): Result
     
 
     
+    priceOracle: TypedContractMethod<
+      [],
+      [string],
+      'view'
+    >
+    
+
+    
     relayer: TypedContractMethod<
       [],
       [string],
@@ -248,6 +258,11 @@ getFunction(nameOrSignature: 'nextIntentId'): TypedContractMethod<
       'view'
     >;
 getFunction(nameOrSignature: 'noxCompute'): TypedContractMethod<
+      [],
+      [string],
+      'view'
+    >;
+getFunction(nameOrSignature: 'priceOracle'): TypedContractMethod<
       [],
       [string],
       'view'
