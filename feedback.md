@@ -32,3 +32,8 @@
 *   **Friction**: The source code repository/GitHub README for `@iexec-nox/nox-hardhat-plugin` is stale (it describes itself as a generic template and only mentions the "Hola, Hardhat!" task), which can lead developers to assume the plugin doesn't contain real off-chain provisioning logic.
 *   **Solution**: The published npm package is fully functional and includes the actual implementation for Docker Compose and KMS/Gateway setup, but the public documentation should be updated to align with the actual NPM artifact.
 
+#### 6. Trust Model Design Tradeoff: Oracle Whitelisting
+*   **Design Tradeoff**: Gating trigger price updates (`requestTriggerCheck`) via a single whitelisted `priceOracle` key introduces a centralization risk. An adversarial or compromised oracle key could submit forged prices to prematurely trigger user intents.
+*   **Production Recommendation**: In a production-grade deployment, this single whitelisted address should be replaced by a decentralized oracle feed (such as a Chainlink oracle network or decentralized multi-source price aggregator) supplying the encrypted price directly from a verified oracle contract.
+
+
