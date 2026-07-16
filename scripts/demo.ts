@@ -45,6 +45,11 @@ const MOCK_SWAP_ABI = [
 ];
 
 async function main() {
+  if (!process.env.PRIVATE_KEY) {
+    console.error("Error: PRIVATE_KEY environment variable is required in .env for Sepolia execution.");
+    process.exit(1);
+  }
+
   const targetNetwork = "sepolia";
   const connection = await hre.network.getOrCreate(targetNetwork);
   const { ethers } = connection;
