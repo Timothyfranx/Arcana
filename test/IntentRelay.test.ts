@@ -125,6 +125,17 @@ describe("IntentRelay Integration Test", function () {
       intentRelayAddress
     );
 
+    console.log("Asserting non-oracle caller reverts...");
+    await expect(
+      intentRelay.connect(user).requestTriggerCheck(
+        intentId,
+        currentPriceSecret.handle,
+        await user.getAddress(),
+        currentPriceSecret.handleProof
+      )
+    ).to.be.revertedWithCustomError(intentRelay, "OnlyOracle");
+    console.log("Non-oracle check successfully blocked!");
+
     console.log("Keeper requesting trigger check...");
     const checkTx = await intentRelay.connect(keeper).requestTriggerCheck(
       intentId,
