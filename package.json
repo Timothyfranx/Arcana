@@ -1,0 +1,24 @@
+{
+  "name": "arcana",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@iexec-nox/handle": "^0.1.0-beta.13",
+    "@iexec-nox/nox-confidential-contracts": "^0.2.2",
+    "@iexec-nox/nox-hardhat-plugin": "^0.1.0",
+    "@iexec-nox/nox-protocol-contracts": "^0.2.4",
+    "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.7",
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.7",
+    "dotenv": "^17.4.2",
+    "ethers": "^6.17.0",
+    "hardhat": "^3.9.1"
+  }
+}
