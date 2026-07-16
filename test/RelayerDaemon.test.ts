@@ -50,7 +50,7 @@ describe("Relayer Daemon Integration Test", function () {
     const gatewayUrl = `http://127.0.0.1:${process.env.NOX_HANDLE_GATEWAY_HOST_PORT}`;
 
     console.log("Spawning Relayer Daemon process...");
-    const relayerProcess = spawn("npx", ["tsx", "src/relayer.ts"], {
+    const relayerProcess = spawn("node", ["node_modules/tsx/dist/cli.mjs", "src/relayer.ts"], {
       env: {
         ...process.env,
         RPC_URL: "http://127.0.0.1:8545",
