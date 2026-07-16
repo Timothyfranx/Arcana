@@ -78,10 +78,10 @@ async function main() {
   const solidityType = "uint256";
 
   const t0 = Date.now();
-  console.log(`Encrypting trigger price: ${triggerPrice}`);
+  console.log(`Encrypting trigger price: [redacted for confidentiality]`);
   const triggerSecret = await handleClient.encryptInput(triggerPrice, solidityType, intentRelayAddress);
 
-  console.log(`Encrypting target contract: ${mockSwapAddress}`);
+  console.log(`Encrypting target contract: ${mockSwapAddress.slice(0, 6)}...${mockSwapAddress.slice(-4)}`);
   const targetSecret = await handleClient.encryptInput(BigInt(mockSwapAddress), solidityType, intentRelayAddress);
 
   const swapAmount = 333n;
@@ -92,7 +92,7 @@ async function main() {
   const calldataHandles: string[] = [];
   const calldataProofs: string[] = [];
   for (let i = 0; i < calldataChunks.length; i++) {
-    console.log(`Encrypting calldata chunk #${i}: ${calldataChunks[i]}`);
+    console.log(`Encrypting calldata chunk #${i}: [redacted for confidentiality]`);
     const chunkSecret = await handleClient.encryptInput(calldataChunks[i], solidityType, intentRelayAddress);
     calldataHandles.push(chunkSecret.handle);
     calldataProofs.push(chunkSecret.handleProof);
