@@ -10,13 +10,21 @@ import * as Contracts from "./index.js";
 
 declare module "@nomicfoundation/hardhat-ethers/types" {
   interface HardhatEthersHelpers extends HardhatEthersHelpersBase {
-  getContractFactory(name: 'MockContract', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.MockContract__factory>
+  getContractFactory(name: 'IntentRelay', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.IntentRelay__factory>
+getContractFactory(name: 'MockContract', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.MockContract__factory>
+getContractFactory(name: 'MockSwapContract', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.MockSwapContract__factory>
 
-  getContractAt(name: 'MockContract', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.MockContract>
+  getContractAt(name: 'IntentRelay', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.IntentRelay>
+getContractAt(name: 'MockContract', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.MockContract>
+getContractAt(name: 'MockSwapContract', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.MockSwapContract>
 
-  deployContract(name: 'MockContract', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.MockContract>
+  deployContract(name: 'IntentRelay', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.IntentRelay>
+deployContract(name: 'MockContract', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.MockContract>
+deployContract(name: 'MockSwapContract', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.MockSwapContract>
 
-  deployContract(name: 'MockContract', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.MockContract>
+  deployContract(name: 'IntentRelay', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.IntentRelay>
+deployContract(name: 'MockContract', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.MockContract>
+deployContract(name: 'MockSwapContract', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.MockSwapContract>
 
     // default types
     getContractFactory(

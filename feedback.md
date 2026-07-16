@@ -27,3 +27,8 @@
     *   Target addresses must be cast to `uint256` (big-endian/bigint) and encrypted as `uint256` handles.
     *   Calldata must be padded to a multiple of 32 bytes, chunked into 32-byte segments, cast to `uint256`, and encrypted as an array of `uint256` handles (`bytes32[]`).
     *   The on-chain contract can store these `bytes32` handles generically, and the off-chain relayer can decrypt and re-assemble them back into addresses and bytes.
+
+#### 5. Stale README in Plugin Repository
+*   **Friction**: The source code repository/GitHub README for `@iexec-nox/nox-hardhat-plugin` is stale (it describes itself as a generic template and only mentions the "Hola, Hardhat!" task), which can lead developers to assume the plugin doesn't contain real off-chain provisioning logic.
+*   **Solution**: The published npm package is fully functional and includes the actual implementation for Docker Compose and KMS/Gateway setup, but the public documentation should be updated to align with the actual NPM artifact.
+
