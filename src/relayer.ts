@@ -27,8 +27,8 @@ async function main() {
   const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
   const privateKey = process.env.RELAYER_PRIVATE_KEY;
   const intentRelayAddress = process.env.INTENT_RELAY_ADDRESS;
-  const noxComputeAddress = process.env.NOX_COMPUTE_ADDRESS || "0x75C6AF4430cc474b1bb9b8540b7E46D6f8e1C685";
-  const gatewayUrl = process.env.GATEWAY_URL || `http://127.0.0.1:${process.env.NOX_HANDLE_GATEWAY_HOST_PORT}`;
+  const noxComputeAddress = process.env.NOX_COMPUTE_ADDRESS;
+  const gatewayUrl = process.env.GATEWAY_URL || (process.env.NOX_HANDLE_GATEWAY_HOST_PORT ? `http://127.0.0.1:${process.env.NOX_HANDLE_GATEWAY_HOST_PORT}` : undefined);
 
   if (!privateKey) {
     console.error("Error: RELAYER_PRIVATE_KEY environment variable is required.");
@@ -36,6 +36,14 @@ async function main() {
   }
   if (!intentRelayAddress) {
     console.error("Error: INTENT_RELAY_ADDRESS environment variable is required.");
+    process.exit(1);
+  }
+  if (!noxComputeAddress) {
+    console.error("Error: NOX_COMPUTE_ADDRESS environment variable is required.");
+    process.exit(1);
+  }
+  if (!gatewayUrl) {
+    console.error("Error: GATEWAY_URL or NOX_HANDLE_GATEWAY_HOST_PORT environment variable is required.");
     process.exit(1);
   }
 
@@ -78,7 +86,7 @@ async function main() {
       console.log("Decrypting target address handle...");
       const targetDecryption = await handleClient.decrypt(targetHandle);
       const decryptedTargetAddress = "0x" + targetDecryption.value.toString(16).padStart(40, "0");
-      console.log(`Decrypted target address: ${decryptedTargetAddress}`);
+      console.log(`Decrypted target address: ${decryptedTargetAddress.slice(0, 6)}...${decryptedTargetAddress.slice(-4)}`);
 
       // 3. Decrypt calldata chunks
       console.log(`Decrypting ${calldataHandles.length} calldata chunk(s)...`);
@@ -91,10 +99,10 @@ async function main() {
 
       // Reassemble original calldata bytes
       const rebuiltCalldata = rebuildCalldata(decryptedChunks, calldataLength);
-      console.log(`Reassembled calldata: ${rebuiltCalldata}`);
+      console.log(`Reassembled calldata: [redacted for confidentiality, length: ${rebuiltCalldata.length - 2} hex chars]`);
 
       // 4. Forward transaction to the target protocol
-      console.log(`Submitting execution transaction to target: ${decryptedTargetAddress}...`);
+      console.log(`Submitting execution transaction to target: ${decryptedTargetAddress.slice(0, 6)}...${decryptedTargetAddress.slice(-4)}...`);
       const nonce1 = Number(await provider.send("eth_getTransactionCount", [relayerAddress, "latest"]));
       const executionTx = await wallet.sendTransaction({
         to: decryptedTargetAddress,
