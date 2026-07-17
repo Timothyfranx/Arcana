@@ -32,8 +32,39 @@
 *   **Friction**: The source code repository/GitHub README for `@iexec-nox/nox-hardhat-plugin` is stale (it describes itself as a generic template and only mentions the "Hola, Hardhat!" task), which can lead developers to assume the plugin doesn't contain real off-chain provisioning logic.
 *   **Solution**: The published npm package is fully functional and includes the actual implementation for Docker Compose and KMS/Gateway setup, but the public documentation should be updated to align with the actual NPM artifact.
 
-#### 6. Trust Model Design Tradeoff: Oracle Whitelisting
-*   **Design Tradeoff**: Gating trigger price updates (`requestTriggerCheck`) via a single whitelisted `priceOracle` key introduces a centralization risk. An adversarial or compromised oracle key could submit forged prices to prematurely trigger user intents.
-*   **Production Recommendation**: In a production-grade deployment, this single whitelisted address should be replaced by a decentralized oracle feed (such as a Chainlink oracle network or decentralized multi-source price aggregator) supplying the encrypted price directly from a verified oracle contract.
+---
 
+## Day 2-5 — Contract and Off-Chain Daemon Development
 
+### Core Metrics
+*   **Local Daemon Integration E2E Latency**: ~3.5s (full loop: pricing check, trigger verification, relayer event capture, decryption, execution, and execution marking).
+
+### Friction Points & Solutions
+
+#### 1. Dynamic Boolean Parsing in Solidity
+*   **Friction**: Boolean decryption results returned by the TEE decryption gateway are serialized as 1-byte values (`0x00` / `0x01`) rather than standard 32-byte EVM words. Using `abi.decode` directly on the decryption result array fails and reverts for 1-byte lengths.
+*   **Solution**: Added a utility helper to parse the `decrypted.length` dynamically, resolving both 1-byte, 32-byte, and fallback values safely on-chain.
+
+#### 2. Manual Nonce Tracking in Fast-Mining Nodes
+*   **Friction**: When running background daemons in simulated fast-mining chains (such as EDR), Ethers' built-in nonce tracker fails under high-frequency consecutive transactions (e.g., verifying a trigger and immediately marking as executed), leading to `nonce too low` errors.
+*   **Solution**: Bypassed local signer nonce caching by manually querying `wallet.provider.send("eth_getTransactionCount", ...)` before submitting each critical transaction.
+
+---
+
+## Day 6-7 — Live Sepolia Testnet Deployment
+
+### Core Metrics (Ethereum Sepolia)
+*   **Client Price Encryption**: ~5.03s
+*   **TEE Async Comparison Latency**: ~1.80s (Real unwrap phase time in hardware)
+*   **Off-chain Execution Payload Decryption**: ~6.31s
+*   **Total Off-chain Latency Overhead**: ~13.14s
+
+### Friction Points & Solutions
+
+#### 1. Testnet Subgraph Indexer Latency
+*   **Friction**: Access permissions for off-chain decryption (`decrypt()`) are checked by the Nox Handle Gateway against blockchain state. On live testnets, the gateway uses a subgraph indexer. Because subgraph indexing has a block-level delay, calling `decrypt()` immediately after the `verifyTrigger` transaction confirms returns a `403 Access denied: not a viewer` error.
+*   **Solution**: Wrapped all decryption calls in the Relayer daemon and demo script inside a robust retry loop (polling every 4 seconds for up to 15 attempts) to give the subgraph indexer enough time to sync the permission grant event.
+
+#### 2. EDR Simulated Port Conflicts
+*   **Friction**: Spawning TypeScript daemons in mocha integration tests using `npx tsx` spawns independent Node processes wrapped under `npx`. If a test crashes or calls `.kill()`, the `npx` wrapper process is terminated but the underlying runner remains orphaned, keeping port handles active and blocking subsequent test runs.
+*   **Solution**: Configured child processes to spawn `node` directly with the TSX CLI path (`node_modules/tsx/dist/cli.mjs`), ensuring that calling `.kill()` on the child process terminates the JS runtime directly.
