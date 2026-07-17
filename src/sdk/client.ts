@@ -10,6 +10,7 @@ export interface ArcanaClientOptions {
 }
 
 const INTENT_RELAY_ABI = [
+  "event IntentTriggered(uint256 indexed intentId, bytes32 indexed targetHandle, bytes32[] calldataHandles)",
   "function nextIntentId() view returns (uint256)",
   "function submitIntent(bytes32 triggerConditionHandle, uint8 compareOp, bytes32 targetHandle, bytes32[] calldataHandles, uint256 calldataLength, bytes triggerProof, bytes targetProof, bytes[] calldataProofs) external",
   "function requestTriggerCheck(uint256 intentId, bytes32 currentValueHandle, address currentValueOwner, bytes calldata currentValueProof) external",

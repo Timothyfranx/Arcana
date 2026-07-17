@@ -3,18 +3,7 @@ import { network } from "hardhat";
 import { spawn } from "child_process";
 import { nox, NOX_COMPUTE_ADDRESS } from "@iexec-nox/nox-hardhat-plugin";
 
-// Helper to chunk calldata
-function chunkCalldata(calldataHex: string): bigint[] {
-  const clean = calldataHex.startsWith("0x") ? calldataHex.slice(2) : calldataHex;
-  const remainder = clean.length % 64;
-  const padded = remainder === 0 ? clean : clean + "0".repeat(64 - remainder);
-  const chunks: bigint[] = [];
-  for (let i = 0; i < padded.length; i += 64) {
-    const chunkHex = padded.slice(i, i + 64);
-    chunks.push(BigInt("0x" + chunkHex));
-  }
-  return chunks;
-}
+import { chunkCalldata } from "../src/sdk/index.js";
 
 describe("Keeper Loop and Relayer Integration Test", function () {
   it("Should evaluate price checks, fail when mock price is below trigger, and execute automatically when mock price is met", async function () {

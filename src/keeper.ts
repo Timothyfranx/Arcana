@@ -10,6 +10,7 @@ async function main() {
   const intentRelayAddress = process.env.INTENT_RELAY_ADDRESS;
   const noxComputeAddress = process.env.NOX_COMPUTE_ADDRESS;
   const gatewayUrl = process.env.GATEWAY_URL || (process.env.NOX_HANDLE_GATEWAY_HOST_PORT ? `http://127.0.0.1:${process.env.NOX_HANDLE_GATEWAY_HOST_PORT}` : undefined);
+  const subgraphUrl = process.env.SUBGRAPH_URL;
   const pollInterval = Number(process.env.POLL_INTERVAL_MS || "15000");
 
   if (!privateKey) {
@@ -26,6 +27,12 @@ async function main() {
   }
   if (!gatewayUrl) {
     console.error("Error: GATEWAY_URL or NOX_HANDLE_GATEWAY_HOST_PORT environment variable is required.");
+    process.exit(1);
+  }
+
+  const isLocal = rpcUrl.includes("127.0.0.1") || rpcUrl.includes("localhost");
+  if (!isLocal && !subgraphUrl) {
+    console.error("Error: SUBGRAPH_URL environment variable is required for non-local networks.");
     process.exit(1);
   }
 
@@ -48,7 +55,8 @@ async function main() {
   const client = new ArcanaClient(wallet, {
     intentRelayAddress,
     noxComputeAddress,
-    gatewayUrl
+    gatewayUrl,
+    subgraphUrl
   });
 
   const runLoop = async () => {
