@@ -103,6 +103,9 @@ describe("Keeper Loop and Relayer Integration Test", function () {
     relayerProcess.stdout.on("data", (data) => {
       console.log(`[Relayer Daemon] ${data.toString().trim()}`);
     });
+    relayerProcess.stderr.on("data", (data) => {
+      console.error(`[Relayer Daemon Error] ${data.toString().trim()}`);
+    });
 
     // 4. Spawn Keeper Daemon with Price = 90 (below trigger threshold 100)
     console.log("Spawning Keeper Daemon with price 90...");
@@ -121,6 +124,9 @@ describe("Keeper Loop and Relayer Integration Test", function () {
 
     keeperProcessPrice90.stdout.on("data", (data) => {
       console.log(`[Keeper Daemon (90)] ${data.toString().trim()}`);
+    });
+    keeperProcessPrice90.stderr.on("data", (data) => {
+      console.error(`[Keeper Daemon Error (90)] ${data.toString().trim()}`);
     });
 
     // Wait for keeper to submit checking logs
@@ -152,6 +158,9 @@ describe("Keeper Loop and Relayer Integration Test", function () {
 
     keeperProcessPrice110.stdout.on("data", (data) => {
       console.log(`[Keeper Daemon (110)] ${data.toString().trim()}`);
+    });
+    keeperProcessPrice110.stderr.on("data", (data) => {
+      console.error(`[Keeper Daemon Error (110)] ${data.toString().trim()}`);
     });
 
     // Poll status on the contract until status is Status.Executed (2)

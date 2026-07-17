@@ -34,7 +34,7 @@ export class ArcanaClient {
     this.handleClientPromise = createEthersHandleClient(wallet, {
       smartContractAddress: options.noxComputeAddress,
       gatewayUrl: options.gatewayUrl || "https://gateway-testnets.noxprotocol.dev",
-      subgraphUrl: options.subgraphUrl
+      subgraphUrl: options.subgraphUrl || "https://example.com/subgraphs/id/none"
     });
   }
 
