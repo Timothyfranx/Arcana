@@ -195,23 +195,28 @@ export class ArcanaClient {
     }
 
     const calldataHandles = await this.intentRelayContract.getCalldataHandles(intentId);
-    const decryptedChunks: bigint[] = [];
-
-    // Decrypt calldata chunks
-    for (const handle of calldataHandles) {
+    
+    // Once the target handle successfully decrypts, the subgraph is verified synced.
+    // We can decrypt all remaining calldata chunks concurrently in parallel.
+    const decryptPromises = calldataHandles.map(async (handle, index) => {
       for (let retry = 1; retry <= maxRetries; retry++) {
         try {
           const chunkDecryption = await handleClient.decrypt(handle);
-          decryptedChunks.push(chunkDecryption.value as bigint);
-          break;
+          return { index, value: chunkDecryption.value as bigint };
         } catch (err: any) {
           if (retry === maxRetries) {
-            throw new Error(`Failed to decrypt calldata chunk handle after ${maxRetries} retries: ${err.message || err}`);
+            throw new Error(`Failed to decrypt calldata chunk handle at index ${index} after ${maxRetries} retries: ${err.message || err}`);
           }
           await new Promise((r) => setTimeout(r, 4000));
         }
       }
-    }
+      throw new Error(`Failed to decrypt chunk at index ${index}`);
+    });
+
+    const results = await Promise.all(decryptPromises);
+    // Sort results by index to ensure chunks are reconstructed in correct order
+    results.sort((a, b) => a.index - b.index);
+    const decryptedChunks = results.map((r) => r.value);
 
     const calldata = rebuildCalldata(decryptedChunks, Number(intent.calldataLength));
     return { targetAddress, calldata };
