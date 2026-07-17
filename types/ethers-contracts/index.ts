@@ -5,6 +5,6 @@ export type { IntentRelay } from './IntentRelay.js';
 export type { MockContract } from './MockContract.js';
 export type { MockSwapContract } from './MockSwapContract.js';
 export * as factories from './factories/index.js';
-export { IntentRelay__factory } from './factories/IntentRelay__factory.js';
-export { MockSwapContract__factory } from './factories/MockSwapContract__factory.js';
 export { MockContract__factory } from './factories/MockContract__factory.js';
+export { MockSwapContract__factory } from './factories/MockSwapContract__factory.js';
+export { IntentRelay__factory } from './factories/IntentRelay__factory.js';

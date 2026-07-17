@@ -12,16 +12,7 @@ const INTENT_RELAY_ABI = [
   "function markExecuted(uint256) external"
 ];
 
-// Helper to rebuild calldata from decrypted uint256 chunks
-function rebuildCalldata(chunks: bigint[], originalLength: number): string {
-  let hex = "";
-  for (const chunk of chunks) {
-    let chunkHex = chunk.toString(16);
-    chunkHex = chunkHex.padStart(64, "0");
-    hex += chunkHex;
-  }
-  return "0x" + hex.slice(0, originalLength * 2);
-}
+import { rebuildCalldata } from "./sdk/index.js";
 
 async function main() {
   const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
