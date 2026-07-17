@@ -68,3 +68,27 @@
 #### 2. EDR Simulated Port Conflicts
 *   **Friction**: Spawning TypeScript daemons in mocha integration tests using `npx tsx` spawns independent Node processes wrapped under `npx`. If a test crashes or calls `.kill()`, the `npx` wrapper process is terminated but the underlying runner remains orphaned, keeping port handles active and blocking subsequent test runs.
 *   **Solution**: Configured child processes to spawn `node` directly with the TSX CLI path (`node_modules/tsx/dist/cli.mjs`), ensuring that calling `.kill()` on the child process terminates the JS runtime directly.
+
+---
+
+## Day 8-13 — SDK Refactoring, Gnosis Safe Integration & Performance Optimization
+
+### Core Metrics (Ethereum Sepolia - 484-byte payload, 16 chunks)
+*   **Client Parameters Encryption (16 handles)**: ~18.9s
+*   **TEE Async Comparison Latency**: ~12.0s
+*   **Off-chain Decryption Latency (Sequential)**: ~35.4s
+*   **Off-chain Decryption Latency (Parallel)**: **~18.1s** (50% speedup)
+
+### Friction Points & Solutions
+
+#### 1. Code-absence on Mainnet Singleton Addresses on Sepolia
+*   **Friction**: The standard mainnet Gnosis Safe L1 Master Copy address `0xd9db270c1b5e3bd161e8c8503c55ceabee896567` is not deployed or has no code on Ethereum Sepolia. Deploying a proxy pointing to it results in successful transactions (factory deploys the proxy structure), but subsequent calls (e.g. `nonce()`, `execTransaction()`) fail silently and return empty data `0x` because the underlying `delegatecall` targets an empty address.
+*   **Solution**: Wrote a diagnostic script to check the contract code existence of Safe Master copies on Sepolia. Discovered that the correct L1 standard singleton address is `0x69f4d1788e39c87893c980c06edf4b7f686e2938` which has code deployed (45,918 bytes). Updated the deployment script to target this address.
+
+#### 2. Sequential Decryption Bottlenecks for Large Data Payloads
+*   **Friction**: For large payloads (like Gnosis Safe's `execTransaction` requiring 484 bytes/16 chunks), decrypting the target and each calldata chunk sequentially results in linear network round-trip overhead. With gateway processing and round-trips taking ~1.6s per call, 17 sequential calls stack up to ~27 seconds of network latency.
+*   **Solution**: Parallelized the chunk decryption process. Once the first handle (the target address) successfully decrypts (confirming that the subgraph has synchronized), the relayer SDK executes all remaining calldata handle decryption calls in parallel using `Promise.all(...)`. This collapses the 16 sequential network round-trips into a single concurrent batch, reducing the decryption latency from ~35.4s to ~18.1s (which includes the ~12s block indexer delay).
+
+#### 3. Strict Template Literal Address Verification in JS SDK
+*   **Friction**: The iExec Nox JS SDK enforces strict template-literal checks on hex addresses (`0x${string}`) and URLs (`https://${string}` / `http://${string}`). Declaring parameters as standard TypeScript `string` types causes compile-time errors during the Vite build.
+*   **Solution**: Updated the custom `ArcanaClientOptions` interface properties to match the exact template-literal type signatures expected by the SDK, resolving all Vite bundling compilation errors.

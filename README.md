@@ -19,7 +19,7 @@ sequenceDiagram
     participant Nox as iExec Nox TEE
     actor Relayer
 
-    User->>User: Encrypts Target Address & Calldata Chunks
+    User->xUser: Encrypts Target Address & Calldata Chunks
     User->>Contract: submitIntent(targetHandle, calldataHandles, triggerThresholdHandle)
     Note over Contract: Persists contract access to handles (INoxCompute.allow)
     
@@ -49,18 +49,27 @@ sequenceDiagram
 ## Repository Contents
 
 *   **[`contracts/IntentRelay.sol`](file:///home/replytim/Desktop/Arcana/contracts/IntentRelay.sol)**: The main smart contract managing confidential intent submissions, TEE comparison requests, decryption verification, and relayer access control.
-*   **[`src/relayer.ts`](file:///home/replytim/Desktop/Arcana/src/relayer.ts)**: A standalone off-chain Relayer daemon service that monitors trigger events, decrypts swap payloads, and executes them.
-*   **[`src/keeper.ts`](file:///home/replytim/Desktop/Arcana/src/keeper.ts)**: A standalone off-chain Keeper daemon service that evaluates prices, requests trigger comparisons, and submits verification proofs on-chain.
+*   **[`src/sdk/`](file:///home/replytim/Desktop/Arcana/src/sdk/)**: The reusable Javascript/Typescript client SDK (`ArcanaClient`) encapsulating padding, chunking, EIP-712 credential signing, on-chain submission, and decryption logic.
+*   **[`frontend/`](file:///home/replytim/Desktop/Arcana/frontend/)**: A responsive dark-themed Web3 single-page Vite dashboard allowing users to connect MetaMask, submit private intents, and track their execution status live.
+*   **[`src/relayer.ts`](file:///home/replytim/Desktop/Arcana/src/relayer.ts)**: A standalone off-chain Relayer daemon service refactored to use the client SDK to monitor events, decrypt payloads, and dispatch execution.
+*   **[`src/keeper.ts`](file:///home/replytim/Desktop/Arcana/src/keeper.ts)**: A standalone off-chain Keeper daemon service refactored to use the SDK to check pending intents and request trigger validations.
 *   **[`test/KeeperLoop.test.ts`](file:///home/replytim/Desktop/Arcana/test/KeeperLoop.test.ts)**: Integration tests simulating unsuccessful checks (price below trigger) and successful checks.
-*   **[`scripts/demo.ts`](file:///home/replytim/Desktop/Arcana/scripts/demo.ts)**: A complete end-to-end demo execution script on Ethereum Sepolia.
+*   **[`scripts/deploy_safe.ts`](file:///home/replytim/Desktop/Arcana/scripts/deploy_safe.ts)**: Deploys a standard Gnosis Safe Proxy (v1.3.0) on Ethereum Sepolia controlled by the burner wallet.
+*   **[`scripts/demo_safe.ts`](file:///home/replytim/Desktop/Arcana/scripts/demo_safe.ts)**: End-to-end Sepolia execution demo routing a private payout transaction through the Gnosis Safe.
 
 ---
 
 ## Latency Metrics (Live Ethereum Sepolia Testnet)
 
+### 1. Minimal Swap Demo (72 bytes calldata, 2 chunks)
 *   **Client Price Encryption**: **5.03s** (EIP-712 credential signing & off-chain encryption).
-*   **TEE Async Comparison Latency**: **1.80s** (Unwrap phase where the real Sepolia TEE hardware evaluates the comparison and posts the result handle).
-*   **Relayer Decryption Latency**: **6.31s** (EIP-712 relayer decryption verification & key retrieval).
+*   **TEE Async Comparison Latency**: **1.80s** (Unwrap phase where Sepolia TEE hardware evaluates the comparison).
+*   **Relayer Decryption Latency**: **6.31s** (EIP-712 decryption verification & key retrieval).
+
+### 2. Gnosis Safe Payout Demo (484 bytes calldata, 16 chunks)
+*   **Client Parameters Encryption**: **18.94s** (Encrypting trigger condition, target address, and 16 calldata chunks).
+*   **TEE Async Comparison Latency**: **12.04s** (TEE worker enclave execution on testnet).
+*   **Relayer Decryption Latency (Optimized parallelized)**: **18.18s** (Reduced from **35.45s** using parallel `Promise.all` decryption; includes ~12s subgraph indexer delay and ~6s parallel TEE API requests).
 
 ---
 
@@ -73,37 +82,45 @@ docker compose version
 ```
 
 ### 2. Installation
-Clone the repository and install the dependencies:
+Clone the repository and install dependencies:
 ```bash
 npm install
 ```
 
 ### 3. Running Local Integration Tests
-The project uses the `@iexec-nox/nox-hardhat-plugin` to spin up the local off-chain stack (Nox KMS, handle gateway, ingestor, runner, NATS) inside Docker and runs mocha tests:
+The project uses the `@iexec-nox/nox-hardhat-plugin` to spin up the local off-chain stack (Nox KMS, handle gateway, ingestor, runner, NATS) inside Docker:
 ```bash
 npx hardhat test
 ```
 
-### 4. Running the Ethereum Sepolia Demo
+### 4. Running the Web Frontend Dashboard
+Scaffolded under the `frontend` folder. To run locally:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### 5. Running the Gnosis Safe Sepolia Demo
 Create a `.env` file in the root directory:
 ```env
 PRIVATE_KEY=your_sepolia_private_key
 ```
 
-Deploy the contracts to Ethereum Sepolia:
+Deploy the Gnosis Safe proxy on Sepolia:
 ```bash
-npx hardhat run scripts/deploy.ts --network sepolia
+npx hardhat run scripts/deploy_safe.ts --network sepolia
 ```
 
-Run the end-to-end Sepolia demonstration script:
+Run the end-to-end Safe payout demo:
 ```bash
-npx hardhat run scripts/demo.ts --network sepolia
+npx hardhat run scripts/demo_safe.ts --network sepolia
 ```
 
 ---
 
 ## Design Choices & Tradeoffs
 
-1. **Gated Price Feeds**: To prevent arbitrary actors from submitting forged prices and forcing intent executions, `requestTriggerCheck` is gated by a whitelisted `priceOracle` address. In production, this address would be a decentralized contract oracle (e.g. Chainlink or Uniswap TWAP).
-2. **Dynamic Subgraph Indexer Retries**: Off-chain decryption requires the gateway to check on-chain viewer status. Since subgraph indexers on live testnets have latency, the relayer implements a polling retry loop to handle the indexer sync delay gracefully.
-3. **Calldata Chunking**: Because the current Nox JS SDK only supports encrypting 32-byte numeric types (`uint256`), generic swap calldata of arbitrary length is padded, divided into 32-byte chunks, and encrypted client-side. The relayer decrypts these chunks off-chain and trims the padding dynamically using the on-chain stored `calldataLength`.
+1. **Whitelisted Price Oracles**: Gated `requestTriggerCheck` to prevent arbitrary price manipulation. Gated by a whitelisted `priceOracle` address.
+2. **Parallelized Decryption**: Safe execution calldata is split into multiple 32-byte chunks. The SDK decrypts all chunks concurrently in parallel (`Promise.all`) once the subgraph indexes the permission change, eliminating linear network latency.
+3. **Calldata Chunking**: Because the current Nox JS SDK only supports encrypting 32-byte numeric types (`uint256`), generic swap/multisig calldata of arbitrary length is padded, divided into 32-byte chunks, and encrypted client-side. The relayer decrypts these chunks off-chain and trims the padding dynamically using the on-chain stored `calldataLength`.
