@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arcana — Confidential Intent Dashboard</title>
+    <meta name="description" content="Manage your private DeFi limit orders and intents securely encrypted inside TEE hardware using iExec Nox." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <div class="logo-section">
+          <div class="glow-dot"></div>
+          <h1>ARCANA</h1>
+          <span class="badge subtitle">Confidential Intent Relay</span>
+        </div>
+        <div class="wallet-section">
+          <span id="wallet-balance" class="balance-display">-- ETH</span>
+          <button id="btn-connect" class="btn btn-primary">Connect Wallet</button>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <section class="form-container glass-card">
+          <h2>Create Private Intent</h2>
+          <p class="section-desc">Encrypt and deposit a private limit order. Target contracts and execution calldata are shielded in TEE enclaves until triggered.</p>
+          
+          <form id="intent-form" onsubmit="return false;">
+            <div class="form-group">
+              <label for="input-target">Target Contract Address</label>
+              <input type="text" id="input-target" placeholder="0x..." value="0xdAC574e3B378dEdd3B8C76CAd3424d5b42283791" required />
+            </div>
+            
+            <div class="form-group">
+              <label for="input-amount">Swap Amount (MockSwapContract)</label>
+              <input type="number" id="input-amount" placeholder="888" value="888" min="1" required />
+            </div>
+            
+            <div class="form-group">
+              <label for="input-threshold">Trigger Price Threshold (>=)</label>
+              <input type="number" id="input-threshold" placeholder="100" value="100" min="1" required />
+            </div>
+            
+            <button type="submit" id="btn-submit" class="btn btn-submit-intent" disabled>
+              Submit Private Intent
+            </button>
+          </form>
+        </section>
+
+        <section class="dashboard-container glass-card">
+          <div class="dashboard-header">
+            <h2>Your Active Intents</h2>
+            <button id="btn-refresh" class="btn btn-secondary">Refresh Status</button>
+          </div>
+          
+          <div class="table-wrapper">
+            <table id="intents-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Target (Confidential)</th>
+                  <th>Calldata (Confidential)</th>
+                  <th>Price Trigger</th>
+                  <th>TEE Active Check</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="intents-list">
+                <tr>
+                  <td colspan="6" class="table-empty">Connect wallet to load active intents.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+      
+      <footer class="app-footer">
+        <p>Powered by <span>iExec Nox Protocol</span> & Intel SGX Hardware Enclaves</p>
+      </footer>
+    </div>
+    
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

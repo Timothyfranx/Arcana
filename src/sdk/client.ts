@@ -1,12 +1,12 @@
 import { ethers } from "ethers";
-import { createEthersHandleClient, type EthersHandleClient } from "@iexec-nox/handle";
+import { createEthersHandleClient } from "@iexec-nox/handle";
 import { chunkCalldata, rebuildCalldata } from "./handles.js";
 
 export interface ArcanaClientOptions {
-  intentRelayAddress: string;
-  noxComputeAddress: string;
-  gatewayUrl?: string;
-  subgraphUrl?: string;
+  intentRelayAddress: `0x${string}`;
+  noxComputeAddress: `0x${string}`;
+  gatewayUrl?: `http://${string}` | `https://${string}`;
+  subgraphUrl?: `http://${string}` | `https://${string}`;
 }
 
 const INTENT_RELAY_ABI = [
@@ -24,7 +24,7 @@ export class ArcanaClient {
   public wallet: ethers.Signer;
   public options: ArcanaClientOptions;
   public intentRelayContract: ethers.Contract;
-  private handleClientPromise: Promise<EthersHandleClient>;
+  private handleClientPromise: Promise<any>;
 
   constructor(wallet: ethers.Signer, options: ArcanaClientOptions) {
     this.wallet = wallet;
@@ -39,7 +39,7 @@ export class ArcanaClient {
     });
   }
 
-  public async getHandleClient(): Promise<EthersHandleClient> {
+  public async getHandleClient(): Promise<any> {
     return this.handleClientPromise;
   }
 
