@@ -198,7 +198,7 @@ export class ArcanaClient {
     
     // Once the target handle successfully decrypts, the subgraph is verified synced.
     // We can decrypt all remaining calldata chunks concurrently in parallel.
-    const decryptPromises = calldataHandles.map(async (handle, index) => {
+    const decryptPromises = calldataHandles.map(async (handle: string, index: number) => {
       for (let retry = 1; retry <= maxRetries; retry++) {
         try {
           const chunkDecryption = await handleClient.decrypt(handle);
