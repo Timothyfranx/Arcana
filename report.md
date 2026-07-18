@@ -66,8 +66,8 @@ Gnosis Safe execution payloads are relatively large (484 bytes), requiring divis
 | :--- | :--- | :--- | :--- |
 | **Client Encryption** | ~5.0s | ~21.1s | **~18.9s** |
 | **TEE Async Computation** | ~1.8s | ~9.3s | **~12.0s** |
-| **Relayer Decryption** | ~6.3s | ~35.4s | **~18.1s** (50% speedup) |
-| **Total Pipeline Latency** | **~13.1s** | **~45.8s** | **~30.1s** (35% speedup) |
+| **Relayer Decryption** | ~6.3s | ~35.4s | **~18.1s** (48.7% speedup) |
+| **Total Pipeline Latency** | **~13.1s** | **~65.9s** | **~49.2s** (25.3% speedup) |
 
 ---
 
