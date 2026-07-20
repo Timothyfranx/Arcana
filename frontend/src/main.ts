@@ -8,8 +8,17 @@ const NOX_COMPUTE_ADDRESS = "0x24ef36ec5b626d7dcd09a98f3083c2758f0f77bf";
 const GATEWAY_URL = "https://gateway-testnets.noxprotocol.dev";
 const SUBGRAPH_URL = "https://thegraph.ethereum-sepolia-testnet.noxprotocol.io/api/subgraphs/id/9CsccKwvgYFo72zZeU4k4wj2NEBLdWhVE3EUandgmzgo";
 
+const SAFE_ADDRESS = "0xC40ec2fD95830F37D5744489018693031c8AC6eE";
+const MOCK_SWAP_ADDRESS = "0xdAC574e3B378dEdd3B8C76CAd3424d5b42283791";
+
 const MOCK_SWAP_ABI = [
   "function swap(uint256 amount) external"
+];
+
+const SAFE_ABI = [
+  "function nonce() view returns (uint256)",
+  "function getTransactionHash(address to, uint256 value, bytes calldata data, uint8 operation, uint256 safeTxGas, uint256 baseGas, uint256 gasPrice, address gasToken, address refundReceiver, uint256 _nonce) view returns (bytes32)",
+  "function execTransaction(address to, uint256 value, bytes calldata data, uint8 operation, uint256 safeTxGas, uint256 baseGas, uint256 gasPrice, address gasToken, address payable refundReceiver, bytes calldata signatures) external returns (bool success)"
 ];
 
 let provider: ethers.BrowserProvider | null = null;
@@ -24,9 +33,24 @@ const btnSubmit = document.getElementById("btn-submit") as HTMLButtonElement;
 const btnRefresh = document.getElementById("btn-refresh") as HTMLButtonElement;
 const intentsList = document.getElementById("intents-list") as HTMLTableSectionElement;
 
+const selectProtocol = document.getElementById("select-protocol") as HTMLSelectElement;
 const inputTarget = document.getElementById("input-target") as HTMLInputElement;
 const inputAmount = document.getElementById("input-amount") as HTMLInputElement;
 const inputThreshold = document.getElementById("input-threshold") as HTMLInputElement;
+const labelAmount = document.getElementById("label-amount") as HTMLLabelElement;
+
+// Protocol Selector change listener
+selectProtocol.addEventListener("change", () => {
+  if (selectProtocol.value === "gnosis-safe") {
+    inputTarget.value = SAFE_ADDRESS;
+    labelAmount.innerText = "Transfer Amount (ETH / Wei)";
+    inputAmount.value = "1000000000000000";
+  } else {
+    inputTarget.value = MOCK_SWAP_ADDRESS;
+    labelAmount.innerText = "Swap Amount (Tokens)";
+    inputAmount.value = "888";
+  }
+});
 
 // Connect Wallet handler
 async function connectWallet() {
@@ -155,6 +179,7 @@ async function submitIntent() {
   const target = inputTarget.value.trim();
   const amount = BigInt(inputAmount.value);
   const threshold = BigInt(inputThreshold.value);
+  const selectedProtocol = selectProtocol.value;
 
   if (!ethers.isAddress(target)) {
     alert("Invalid Ethereum target contract address.");
@@ -163,12 +188,63 @@ async function submitIntent() {
 
   try {
     btnSubmit.disabled = true;
+    let rawCalldata = "0x";
+
+    if (selectedProtocol === "gnosis-safe") {
+      btnSubmit.innerText = "Signing Safe transaction...";
+      const safeContract = new ethers.Contract(target, SAFE_ABI, signer);
+      const safeNonce = await safeContract.nonce();
+      
+      const recipient = userAddress;
+      const transferAmount = amount;
+      const innerCalldata = "0x";
+      const operation = 0;
+      const safeTxGas = 0n;
+      const baseGas = 0n;
+      const gasPrice = 0n;
+      const gasToken = ethers.ZeroAddress;
+      const refundReceiver = ethers.ZeroAddress;
+
+      const safeTxHash = await safeContract.getTransactionHash(
+        recipient,
+        transferAmount,
+        innerCalldata,
+        operation,
+        safeTxGas,
+        baseGas,
+        gasPrice,
+        gasToken,
+        refundReceiver,
+        safeNonce
+      );
+
+      const rawSig = await signer.signMessage(ethers.getBytes(safeTxHash));
+      const sig = ethers.Signature.from(rawSig);
+      const vAdjusted = sig.v + 4;
+      const safeSignature = ethers.hexlify(ethers.concat([
+        sig.r,
+        sig.s,
+        ethers.toBeArray(vAdjusted)
+      ]));
+
+      rawCalldata = safeContract.interface.encodeFunctionData("execTransaction", [
+        recipient,
+        transferAmount,
+        innerCalldata,
+        operation,
+        safeTxGas,
+        baseGas,
+        gasPrice,
+        gasToken,
+        refundReceiver,
+        safeSignature
+      ]);
+    } else {
+      const mockSwapInterface = new ethers.Interface(MOCK_SWAP_ABI);
+      rawCalldata = mockSwapInterface.encodeFunctionData("swap", [amount]);
+    }
+
     btnSubmit.innerText = "Encrypting parameters...";
-
-    // Encode call on target contract
-    const mockSwapInterface = new ethers.Interface(MOCK_SWAP_ABI);
-    const rawCalldata = mockSwapInterface.encodeFunctionData("swap", [amount]);
-
     console.log(`Encrypting parameters client-side for target: ${target}`);
     const encryptedParams = await client.encryptIntentParameters(target, rawCalldata, threshold);
 
@@ -190,10 +266,6 @@ async function submitIntent() {
     console.log(`Transaction confirmed! Hash: ${receipt.hash}`);
 
     alert(`Intent submitted successfully!\nTransaction hash: ${receipt.hash}`);
-    
-    // Reset form and reload
-    inputAmount.value = "888";
-    inputThreshold.value = "100";
     await loadIntents();
 
   } catch (err: any) {

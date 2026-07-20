@@ -1,8 +1,8 @@
 # Arcana — Confidential Intent Relay on iExec Nox
 
-Arcana is a **Confidential Intent Relay** built on the iExec Nox protocol. It allows users to submit private DeFi intents (such as encrypted limit orders, stop-losses, and yield-farming triggers) where the target protocol address, transaction calldata, and price thresholds remain completely encrypted inside TEE hardware until execution conditions are met. 
+Arcana is a **Confidential Intent Relay** built on the iExec Nox protocol. It enables users to submit private, off-chain encrypted intents (such as multisig treasury payouts, limit orders, and stop-losses) where target contract addresses, transaction calldata, and price thresholds remain completely encrypted inside TEE hardware until execution conditions are met.
 
-The target protocol remains completely unmodified. Once a whitelisted price oracle updates the trigger condition on-chain, the relay contract dynamically grants decryption viewer permissions to a dedicated relayer service. The relayer decrypts the execution payload off-chain and forwards it directly to the target contract in a single sequential block execution.
+Rather than requiring protocols to modify their smart contracts or adopt custom interfaces, Arcana routes confidential payloads through **existing, unmodified, real-world protocols**. As a primary showcase, Arcana routes confidential treasury payouts through a live **Gnosis Safe Multisig Proxy (v1.3.0)** on Ethereum Sepolia.
 
 ---
 
@@ -19,7 +19,7 @@ sequenceDiagram
     participant Nox as iExec Nox TEE
     actor Relayer
 
-    User->xUser: Encrypts Target Address & Calldata Chunks
+    User->>User: Encrypts Target Address & Calldata Chunks
     User->>Contract: submitIntent(targetHandle, calldataHandles, triggerThresholdHandle)
     Note over Contract: Persists contract access to handles (INoxCompute.allow)
     
@@ -48,14 +48,14 @@ sequenceDiagram
 
 ## Repository Contents
 
-*   **[`contracts/IntentRelay.sol`](file:///home/replytim/Desktop/Arcana/contracts/IntentRelay.sol)**: The main smart contract managing confidential intent submissions, TEE comparison requests, decryption verification, and relayer access control.
-*   **[`src/sdk/`](file:///home/replytim/Desktop/Arcana/src/sdk/)**: The reusable Javascript/Typescript client SDK (`ArcanaClient`) encapsulating padding, chunking, EIP-712 credential signing, on-chain submission, and decryption logic.
-*   **[`frontend/`](file:///home/replytim/Desktop/Arcana/frontend/)**: A responsive dark-themed Web3 single-page Vite dashboard allowing users to connect MetaMask, submit private intents, and track their execution status live.
-*   **[`src/relayer.ts`](file:///home/replytim/Desktop/Arcana/src/relayer.ts)**: A standalone off-chain Relayer daemon service refactored to use the client SDK to monitor events, decrypt payloads, and dispatch execution.
-*   **[`src/keeper.ts`](file:///home/replytim/Desktop/Arcana/src/keeper.ts)**: A standalone off-chain Keeper daemon service refactored to use the SDK to check pending intents and request trigger validations.
-*   **[`test/KeeperLoop.test.ts`](file:///home/replytim/Desktop/Arcana/test/KeeperLoop.test.ts)**: Integration tests simulating unsuccessful checks (price below trigger) and successful checks.
-*   **[`scripts/deploy_safe.ts`](file:///home/replytim/Desktop/Arcana/scripts/deploy_safe.ts)**: Deploys a standard Gnosis Safe Proxy (v1.3.0) on Ethereum Sepolia controlled by the burner wallet.
-*   **[`scripts/demo_safe.ts`](file:///home/replytim/Desktop/Arcana/scripts/demo_safe.ts)**: End-to-end Sepolia execution demo routing a private payout transaction through the Gnosis Safe.
+*   **[`scripts/demo_safe.ts`](file:///home/replytim/Desktop/Arcana/scripts/demo_safe.ts)**: **Headline Demonstration**: End-to-end Sepolia execution demo routing a private payout transaction through an unmodified Gnosis Safe Proxy (v1.3.0).
+*   **[`frontend/`](file:///home/replytim/Desktop/Arcana/frontend/)**: Responsive dark-themed Web3 Vite dashboard allowing users to select target protocols (Gnosis Safe or Mock Swap), encrypt parameters client-side, and submit intents via MetaMask.
+*   **[`src/sdk/`](file:///home/replytim/Desktop/Arcana/src/sdk/)**: Reusable JavaScript/TypeScript client SDK (`ArcanaClient`) encapsulating padding, chunking, EIP-712 credential signing, on-chain submission, and parallelized decryption logic.
+*   **[`contracts/IntentRelay.sol`](file:///home/replytim/Desktop/Arcana/contracts/IntentRelay.sol)**: Main smart contract managing confidential intent submissions, TEE comparison requests, decryption verification, and relayer access control.
+*   **[`contracts/MockSwapContract.sol`](file:///home/replytim/Desktop/Arcana/contracts/MockSwapContract.sol)**: Internal test fixture used during development to validate basic swap call encodings.
+*   **[`src/relayer.ts`](file:///home/replytim/Desktop/Arcana/src/relayer.ts)**: Standalone off-chain Relayer daemon service utilizing the SDK to monitor events, decrypt payloads, and dispatch executions.
+*   **[`src/keeper.ts`](file:///home/replytim/Desktop/Arcana/src/keeper.ts)**: Standalone off-chain Keeper daemon service reading market prices, requesting TEE comparisons, and submitting verification proofs.
+*   **[`scripts/deploy_safe.ts`](file:///home/replytim/Desktop/Arcana/scripts/deploy_safe.ts)**: Deploys a standard Gnosis Safe Proxy (v1.3.0) on Ethereum Sepolia controlled by the user wallet.
 
 ---
 
