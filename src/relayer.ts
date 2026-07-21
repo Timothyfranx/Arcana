@@ -46,8 +46,16 @@ async function main() {
   const relayerAddress = await wallet.getAddress();
   console.log(`Relayer Wallet Address: ${relayerAddress}`);
 
+  const privateMempoolUrl = process.env.PRIVATE_MEMPOOL_RPC_URL;
+  const dispatchProvider = privateMempoolUrl ? new ethers.JsonRpcProvider(privateMempoolUrl) : provider;
+  const dispatchWallet = new ethers.Wallet(privateKey, dispatchProvider);
+
+  if (privateMempoolUrl) {
+    console.log(`Private Mempool Protection Enabled: Routing relayer txs through ${privateMempoolUrl}`);
+  }
+
   // Initialize Arcana SDK Client
-  const client = new ArcanaClient(wallet, {
+  const client = new ArcanaClient(dispatchWallet, {
     intentRelayAddress,
     noxComputeAddress,
     gatewayUrl,
@@ -69,10 +77,10 @@ async function main() {
       console.log(`Decrypted target address: ${decryptedTargetAddress.slice(0, 6)}...${decryptedTargetAddress.slice(-4)}`);
       console.log(`Reassembled calldata: [redacted for confidentiality, length: ${rebuiltCalldata.length - 2} hex chars]`);
 
-      // 2. Forward transaction to the target protocol
+      // 2. Forward transaction to the target protocol (via private RPC if configured)
       console.log(`Submitting execution transaction to target: ${decryptedTargetAddress.slice(0, 6)}...${decryptedTargetAddress.slice(-4)}...`);
-      const nonce1 = Number(await provider.send("eth_getTransactionCount", [relayerAddress, "latest"]));
-      const executionTx = await wallet.sendTransaction({
+      const nonce1 = Number(await dispatchProvider.send("eth_getTransactionCount", [relayerAddress, "latest"]));
+      const executionTx = await dispatchWallet.sendTransaction({
         to: decryptedTargetAddress,
         data: rebuiltCalldata,
         nonce: nonce1,
@@ -83,7 +91,7 @@ async function main() {
 
       // 3. Mark intent as executed on-chain using SDK Client
       console.log(`Calling markExecuted for intent ID ${intentId} on-chain...`);
-      const nonce2 = Number(await provider.send("eth_getTransactionCount", [relayerAddress, "latest"]));
+      const nonce2 = Number(await dispatchProvider.send("eth_getTransactionCount", [relayerAddress, "latest"]));
       const markTx = await client.markExecuted(intentId, nonce2);
       console.log(`Mark transaction sent: ${markTx.hash}. Waiting for confirmation...`);
       await markTx.wait();

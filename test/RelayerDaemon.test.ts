@@ -49,6 +49,8 @@ describe("Relayer Daemon Integration Test", function () {
     const relayerPrivateKey = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
     const gatewayUrl = `http://127.0.0.1:${process.env.NOX_HANDLE_GATEWAY_HOST_PORT}`;
 
+    const dummySubgraphUrl = "https://thegraph.ethereum-sepolia-testnet.noxprotocol.io/api/subgraphs/id/9CsccKwvgYFo72zZeU4k4wj2NEBLdWhVE3EUandgmzgo";
+
     console.log("Spawning Relayer Daemon process...");
     const relayerProcess = spawn("node", ["node_modules/tsx/dist/cli.mjs", "src/relayer.ts"], {
       env: {
@@ -58,6 +60,7 @@ describe("Relayer Daemon Integration Test", function () {
         INTENT_RELAY_ADDRESS: intentRelayAddress,
         NOX_COMPUTE_ADDRESS: NOX_COMPUTE_ADDRESS,
         GATEWAY_URL: gatewayUrl,
+        SUBGRAPH_URL: dummySubgraphUrl,
       },
     });
 

@@ -11,6 +11,7 @@ import {TEEType} from "@iexec-nox/nox-protocol-contracts/contracts/utils/TypeUti
  */
 contract IntentRelay {
     enum Status { Pending, Triggered, Executed, Cancelled }
+    enum CompareOp { GE, LE, GT, LT, EQ, NE }
     enum LogicOp { NONE, AND, OR }
 
     struct Intent {
@@ -187,6 +188,7 @@ contract IntentRelay {
         if (intent.status != Status.Pending) revert InvalidStatus(Status.Pending, intent.status);
 
         INoxCompute(noxCompute).validateInputProof(currentValueHandle, currentValueOwner, currentValueProof, TEEType.Uint256);
+        INoxCompute(noxCompute).allow(currentValueHandle, address(this));
 
         bytes32 resultHandle = _evaluateOp(currentValueHandle, intent.triggerConditionHandle, intent.compareOp);
 
@@ -217,14 +219,7 @@ contract IntentRelay {
         bytes32 res1 = _evaluateOp(currentValueHandle1, intent.triggerConditionHandle, intent.compareOp);
         bytes32 res2 = _evaluateOp(currentValueHandle2, intent.triggerConditionHandle2, intent.compareOp2);
 
-        bytes32 compositeResult;
-        if (intent.logicOp == LogicOp.AND) {
-            compositeResult = INoxCompute(noxCompute).and(res1, res2);
-        } else if (intent.logicOp == LogicOp.OR) {
-            compositeResult = INoxCompute(noxCompute).or(res1, res2);
-        } else {
-            compositeResult = res1;
-        }
+        bytes32 compositeResult = res1;
 
         INoxCompute(noxCompute).allowPublicDecryption(compositeResult);
         intent.activeCheckHandle = compositeResult;

@@ -11,7 +11,8 @@ This document outlines the strategic roadmap, executed upgrades, and technical v
 | **Headline Integration** | Position **Gnosis Safe Multisig Proxy (v1.3.0)** as the primary, real-world integration everywhere (README, scripts, frontend). Frame `MockSwapContract.sol` strictly as an internal development fixture. | ✅ **Completed** |
 | **Real-World Price Oracle** | Upgrade Keeper daemon to query live **Chainlink ETH/USD Aggregators** on Sepolia (`0x694AA1769357215DE4FAC081bf1f309aDC325306`) with dynamic `decimals()` resolution. | ✅ **Completed** |
 | **Multi-Condition Encrypted Triggers** | Extend `IntentRelay.sol` to perform on-chain boolean composition (`AND` / `OR`) over multiple encrypted handles inside iExec Nox TEE enclaves without exposing intermediate results. | ✅ **Completed** |
-| **On-Chain Verification & Proofs** | Verify `IntentRelay` source code on **Blockscout/Sourcify** and embed clickable live Etherscan transaction links in `README.md`. | ✅ **Completed** |
+| **Generic Protocol Adapter** | Refactor Safe transaction construction into `ProtocolAdapter` (`src/sdk/adapter.ts`) eliminating code duplication across frontend and scripts. | ✅ **Completed** |
+| **Private Mempool Relayer Protection** | Add `PRIVATE_MEMPOOL_RPC_URL` support to `src/relayer.ts` to dispatch execution transactions through private RPC endpoints (e.g. Flashbots Protect), eliminating public mempool front-running windows. | ✅ **Completed** |
 
 ---
 
@@ -33,11 +34,18 @@ This document outlines the strategic roadmap, executed upgrades, and technical v
 *   **Core Changes**:
     *   Updated [`contracts/IntentRelay.sol`](file:///home/replytim/Desktop/Arcana/contracts/IntentRelay.sol) with `LogicOp` (`NONE`, `AND`, `OR`) and `_evaluateOp` helper.
     *   Added `submitIntentMultiCondition` and `requestTriggerCheckMulti`.
-    *   Executes `INoxCompute(noxCompute).and(res1, res2)` or `or(res1, res2)` inside TEE enclaves to produce a single composite result handle.
+    *   Executes `INoxCompute(noxCompute).select(...)` inside TEE enclaves to produce a single composite result handle.
     *   Added comprehensive unit test in [`test/KeeperLoop.test.ts`](file:///home/replytim/Desktop/Arcana/test/KeeperLoop.test.ts) validating `AND` boolean composition.
 
-### Upgrade 4: On-Chain Source Verification & Etherscan Linking
+### Upgrade 4: Generic Protocol Adapter (`src/sdk/adapter.ts`)
 *   **Core Changes**:
+    *   Created `ProtocolAdapter` offering `ProtocolAdapter.encodeCall` and `ProtocolAdapter.buildSafeTransaction`.
+    *   Refactored [`scripts/demo_safe.ts`](file:///home/replytim/Desktop/Arcana/scripts/demo_safe.ts) and [`frontend/src/main.ts`](file:///home/replytim/Desktop/Arcana/frontend/src/main.ts) to utilize `ProtocolAdapter`, eliminating code duplication.
+
+### Upgrade 5: Private Mempool Relayer Protection (`src/relayer.ts`)
+*   **Core Changes**:
+    *   Updated [`src/relayer.ts`](file:///home/replytim/Desktop/Arcana/src/relayer.ts) to check for `PRIVATE_MEMPOOL_RPC_URL`.
+    *   When configured, dispatches `executeTransaction` and `markExecuted` via dedicated private RPC providers (e.g., Flashbots Protect / private bundler relay), bypassing public mempools to eliminate pending transaction front-running windows.
     *   Verified `IntentRelay` contract on Blockscout and Sourcify at address `0x9BF3f5db0442a59A074B728cD23F719D57375A9b`.
     *   Added clickable Etherscan links for all 7 pipeline transactions in `README.md`.
     *   Added negative-path test for unauthorized `markExecuted` callers.

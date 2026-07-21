@@ -6,7 +6,7 @@ import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, Typed
   
 
   export interface IntentRelayInterface extends Interface {
-    getFunction(nameOrSignature: "cancelIntent" | "getCalldataHandles" | "intents" | "markExecuted" | "nextIntentId" | "noxCompute" | "priceOracle" | "relayer" | "requestTriggerCheck" | "submitIntent" | "verifyTrigger"): FunctionFragment;
+    getFunction(nameOrSignature: "cancelIntent" | "getCalldataHandles" | "intents" | "markExecuted" | "nextIntentId" | "noxCompute" | "priceOracle" | "relayer" | "requestTriggerCheck" | "requestTriggerCheckMulti" | "submitIntent" | "submitIntentMultiCondition" | "verifyTrigger"): FunctionFragment;
 
     getEvent(nameOrSignatureOrTopic: "IntentCancelled" | "IntentExecuted" | "IntentSubmitted" | "IntentTriggered" | "TriggerCheckFailed" | "TriggerCheckRequested"): EventFragment;
 
@@ -19,7 +19,9 @@ encodeFunctionData(functionFragment: 'noxCompute', values?: undefined): string;
 encodeFunctionData(functionFragment: 'priceOracle', values?: undefined): string;
 encodeFunctionData(functionFragment: 'relayer', values?: undefined): string;
 encodeFunctionData(functionFragment: 'requestTriggerCheck', values: [BigNumberish, BytesLike, AddressLike, BytesLike]): string;
+encodeFunctionData(functionFragment: 'requestTriggerCheckMulti', values: [BigNumberish, BytesLike, AddressLike, BytesLike, BytesLike, AddressLike, BytesLike]): string;
 encodeFunctionData(functionFragment: 'submitIntent', values: [BytesLike, BigNumberish, BytesLike, BytesLike[], BigNumberish, BytesLike, BytesLike, BytesLike[]]): string;
+encodeFunctionData(functionFragment: 'submitIntentMultiCondition', values: [BytesLike, BigNumberish, BytesLike, BigNumberish, BigNumberish, BytesLike, BytesLike[], BigNumberish, BytesLike, BytesLike, BytesLike, BytesLike[]]): string;
 encodeFunctionData(functionFragment: 'verifyTrigger', values: [BigNumberish, BytesLike]): string;
 
     decodeFunctionResult(functionFragment: 'cancelIntent', data: BytesLike): Result;
@@ -31,7 +33,9 @@ decodeFunctionResult(functionFragment: 'noxCompute', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'priceOracle', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'relayer', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'requestTriggerCheck', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'requestTriggerCheckMulti', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'submitIntent', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'submitIntentMultiCondition', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'verifyTrigger', data: BytesLike): Result;
   }
 
@@ -160,7 +164,7 @@ decodeFunctionResult(functionFragment: 'verifyTrigger', data: BytesLike): Result
     
     intents: TypedContractMethod<
       [arg0: BigNumberish, ],
-      [[string, string, bigint, string, bigint, bigint, string] & {owner: string, triggerConditionHandle: string, compareOp: bigint, targetHandle: string, calldataLength: bigint, status: bigint, activeCheckHandle: string }],
+      [[string, string, bigint, string, bigint, bigint, string, bigint, bigint, string] & {owner: string, triggerConditionHandle: string, compareOp: bigint, triggerConditionHandle2: string, compareOp2: bigint, logicOp: bigint, targetHandle: string, calldataLength: bigint, status: bigint, activeCheckHandle: string }],
       'view'
     >
     
@@ -214,8 +218,24 @@ decodeFunctionResult(functionFragment: 'verifyTrigger', data: BytesLike): Result
     
 
     
+    requestTriggerCheckMulti: TypedContractMethod<
+      [intentId: BigNumberish, currentValueHandle1: BytesLike, owner1: AddressLike, proof1: BytesLike, currentValueHandle2: BytesLike, owner2: AddressLike, proof2: BytesLike, ],
+      [void],
+      'nonpayable'
+    >
+    
+
+    
     submitIntent: TypedContractMethod<
       [triggerConditionHandle: BytesLike, compareOp: BigNumberish, targetHandle: BytesLike, calldataHandles: BytesLike[], calldataLength: BigNumberish, triggerProof: BytesLike, targetProof: BytesLike, calldataProofs: BytesLike[], ],
+      [void],
+      'nonpayable'
+    >
+    
+
+    
+    submitIntentMultiCondition: TypedContractMethod<
+      [triggerConditionHandle1: BytesLike, compareOp1: BigNumberish, triggerConditionHandle2: BytesLike, compareOp2: BigNumberish, logicOp: BigNumberish, targetHandle: BytesLike, calldataHandles: BytesLike[], calldataLength: BigNumberish, triggerProof1: BytesLike, triggerProof2: BytesLike, targetProof: BytesLike, calldataProofs: BytesLike[], ],
       [void],
       'nonpayable'
     >
@@ -244,7 +264,7 @@ getFunction(nameOrSignature: 'getCalldataHandles'): TypedContractMethod<
     >;
 getFunction(nameOrSignature: 'intents'): TypedContractMethod<
       [arg0: BigNumberish, ],
-      [[string, string, bigint, string, bigint, bigint, string] & {owner: string, triggerConditionHandle: string, compareOp: bigint, targetHandle: string, calldataLength: bigint, status: bigint, activeCheckHandle: string }],
+      [[string, string, bigint, string, bigint, bigint, string, bigint, bigint, string] & {owner: string, triggerConditionHandle: string, compareOp: bigint, triggerConditionHandle2: string, compareOp2: bigint, logicOp: bigint, targetHandle: string, calldataLength: bigint, status: bigint, activeCheckHandle: string }],
       'view'
     >;
 getFunction(nameOrSignature: 'markExecuted'): TypedContractMethod<
@@ -277,8 +297,18 @@ getFunction(nameOrSignature: 'requestTriggerCheck'): TypedContractMethod<
       [void],
       'nonpayable'
     >;
+getFunction(nameOrSignature: 'requestTriggerCheckMulti'): TypedContractMethod<
+      [intentId: BigNumberish, currentValueHandle1: BytesLike, owner1: AddressLike, proof1: BytesLike, currentValueHandle2: BytesLike, owner2: AddressLike, proof2: BytesLike, ],
+      [void],
+      'nonpayable'
+    >;
 getFunction(nameOrSignature: 'submitIntent'): TypedContractMethod<
       [triggerConditionHandle: BytesLike, compareOp: BigNumberish, targetHandle: BytesLike, calldataHandles: BytesLike[], calldataLength: BigNumberish, triggerProof: BytesLike, targetProof: BytesLike, calldataProofs: BytesLike[], ],
+      [void],
+      'nonpayable'
+    >;
+getFunction(nameOrSignature: 'submitIntentMultiCondition'): TypedContractMethod<
+      [triggerConditionHandle1: BytesLike, compareOp1: BigNumberish, triggerConditionHandle2: BytesLike, compareOp2: BigNumberish, logicOp: BigNumberish, targetHandle: BytesLike, calldataHandles: BytesLike[], calldataLength: BigNumberish, triggerProof1: BytesLike, triggerProof2: BytesLike, targetProof: BytesLike, calldataProofs: BytesLike[], ],
       [void],
       'nonpayable'
     >;

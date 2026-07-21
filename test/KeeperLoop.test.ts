@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { network } from "hardhat";
 import { spawn } from "child_process";
 import { nox, NOX_COMPUTE_ADDRESS } from "@iexec-nox/nox-hardhat-plugin";
+import { createEthersHandleClient } from "@iexec-nox/handle";
 
 import { chunkCalldata } from "../src/sdk/index.js";
 
@@ -76,6 +77,8 @@ describe("Keeper Loop and Relayer Integration Test", function () {
 
     const intentId = 0n;
 
+    const dummySubgraphUrl = "https://thegraph.ethereum-sepolia-testnet.noxprotocol.io/api/subgraphs/id/9CsccKwvgYFo72zZeU4k4wj2NEBLdWhVE3EUandgmzgo";
+
     // 3. Start Relayer Daemon in background
     console.log("Spawning Relayer Daemon...");
     const relayerProcess = spawn("node", ["node_modules/tsx/dist/cli.mjs", "src/relayer.ts"], {
@@ -86,6 +89,7 @@ describe("Keeper Loop and Relayer Integration Test", function () {
         INTENT_RELAY_ADDRESS: intentRelayAddress,
         NOX_COMPUTE_ADDRESS: NOX_COMPUTE_ADDRESS,
         GATEWAY_URL: gatewayUrl,
+        SUBGRAPH_URL: dummySubgraphUrl,
       },
     });
 
@@ -106,6 +110,7 @@ describe("Keeper Loop and Relayer Integration Test", function () {
         INTENT_RELAY_ADDRESS: intentRelayAddress,
         NOX_COMPUTE_ADDRESS: NOX_COMPUTE_ADDRESS,
         GATEWAY_URL: gatewayUrl,
+        SUBGRAPH_URL: dummySubgraphUrl,
         MOCK_PRICE: "90",
         POLL_INTERVAL_MS: "3000",
       },
@@ -140,6 +145,7 @@ describe("Keeper Loop and Relayer Integration Test", function () {
         INTENT_RELAY_ADDRESS: intentRelayAddress,
         NOX_COMPUTE_ADDRESS: NOX_COMPUTE_ADDRESS,
         GATEWAY_URL: gatewayUrl,
+        SUBGRAPH_URL: dummySubgraphUrl,
         MOCK_PRICE: "110",
         POLL_INTERVAL_MS: "3000",
       },
@@ -190,37 +196,36 @@ describe("Keeper Loop and Relayer Integration Test", function () {
   it("Should evaluate multi-condition composed encrypted triggers (AND) inside TEE enclaves on-chain", async function () {
     const connection = await network.getOrCreate("noxLocal");
     const { ethers } = connection;
-    const [user, oracle, relayer] = await ethers.getSigners();
-    const handleClient = nox.getHandleClient(connection);
+    const [user, relayer, oracle] = await ethers.getSigners();
+    const userAddr = await user.getAddress();
+    const oracleAddr = await oracle.getAddress();
 
     const IntentRelayFactory = await ethers.getContractFactory("IntentRelay", user);
     const intentRelay = await IntentRelayFactory.deploy(NOX_COMPUTE_ADDRESS, relayer.address, oracle.address);
     await intentRelay.waitForDeployment();
+    const intentRelayAddress = await intentRelay.getAddress();
+
+    console.log("Deployed priceOracle:", await intentRelay.priceOracle(), "oracle signer:", oracleAddr);
 
     // User encrypts Condition 1: Price >= 100
-    const cond1 = await handleClient.encrypt(100n);
-    const proofCond1 = await handleClient.generateInputProof(cond1.handle, await user.getAddress());
+    const { handle: cond1, handleProof: proofCond1 } = await nox.encryptInput(100n, "uint256", intentRelayAddress);
 
     // User encrypts Condition 2: Volatility <= 50
-    const cond2 = await handleClient.encrypt(50n);
-    const proofCond2 = await handleClient.generateInputProof(cond2.handle, await user.getAddress());
+    const { handle: cond2, handleProof: proofCond2 } = await nox.encryptInput(50n, "uint256", intentRelayAddress);
 
     // User encrypts target address & calldata
-    const target = await handleClient.encrypt(12345n);
-    const proofTarget = await handleClient.generateInputProof(target.handle, await user.getAddress());
-
-    const calldataChunk = await handleClient.encrypt(9999n);
-    const proofCalldata = await handleClient.generateInputProof(calldataChunk.handle, await user.getAddress());
+    const { handle: target, handleProof: proofTarget } = await nox.encryptInput(12345n, "uint256", intentRelayAddress);
+    const { handle: calldataChunk, handleProof: proofCalldata } = await nox.encryptInput(9999n, "uint256", intentRelayAddress);
 
     // Submit multi-condition intent: (Price >= 100) AND (Volatility <= 50)
     await intentRelay.connect(user).submitIntentMultiCondition(
-      cond1.handle,
+      cond1,
       0, // CompareOp.GE
-      cond2.handle,
+      cond2,
       1, // CompareOp.LE
       1, // LogicOp.AND
-      target.handle,
-      [calldataChunk.handle],
+      target,
+      [calldataChunk],
       32,
       proofCond1,
       proofCond2,
@@ -229,20 +234,17 @@ describe("Keeper Loop and Relayer Integration Test", function () {
     );
 
     // Oracle encrypts current market values: Price = 110, Volatility = 40 (Both conditions met!)
-    const val1 = await handleClient.encrypt(110n);
-    const proofVal1 = await handleClient.generateInputProof(val1.handle, await oracle.getAddress());
-
-    const val2 = await handleClient.encrypt(40n);
-    const proofVal2 = await handleClient.generateInputProof(val2.handle, await oracle.getAddress());
+    const { handle: val1, handleProof: proofVal1 } = await nox.encryptInput(110n, "uint256", intentRelayAddress);
+    const { handle: val2, handleProof: proofVal2 } = await nox.encryptInput(40n, "uint256", intentRelayAddress);
 
     // Oracle requests multi-condition check
     const tx = await intentRelay.connect(oracle).requestTriggerCheckMulti(
       0n,
-      val1.handle,
-      await oracle.getAddress(),
+      val1,
+      userAddr,
       proofVal1,
-      val2.handle,
-      await oracle.getAddress(),
+      val2,
+      userAddr,
       proofVal2
     );
     await tx.wait();
@@ -252,10 +254,10 @@ describe("Keeper Loop and Relayer Integration Test", function () {
     expect(checkHandle).to.not.equal(ethers.ZeroHash);
 
     // Poll decryption proof of composite result
-    const decryptionProof = await handleClient.pollDecryptionProof(checkHandle);
+    const publicDecryption = await nox.publicDecrypt(checkHandle);
 
     // Verify trigger on-chain
-    await intentRelay.connect(oracle).verifyTrigger(0n, decryptionProof);
+    await intentRelay.connect(oracle).verifyTrigger(0n, publicDecryption.decryptionProof);
 
     const updatedIntent = await intentRelay.intents(0n);
     expect(updatedIntent.status).to.equal(1n); // Status.Triggered!

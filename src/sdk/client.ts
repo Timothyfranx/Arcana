@@ -32,11 +32,13 @@ export class ArcanaClient {
     this.intentRelayContract = new ethers.Contract(options.intentRelayAddress, INTENT_RELAY_ABI, wallet);
     
     // Lazy initialization of HandleClient
-    this.handleClientPromise = createEthersHandleClient(wallet, {
+    const handleClientOptions = {
       smartContractAddress: options.noxComputeAddress,
       gatewayUrl: options.gatewayUrl || "https://gateway-testnets.noxprotocol.dev",
-      subgraphUrl: options.subgraphUrl || "https://example.com/subgraphs/id/none"
-    });
+      subgraphUrl: options.subgraphUrl || "https://thegraph.ethereum-sepolia-testnet.noxprotocol.io/api/subgraphs/id/9CsccKwvgYFo72zZeU4k4wj2NEBLdWhVE3EUandgmzgo"
+    };
+
+    this.handleClientPromise = createEthersHandleClient(wallet, handleClientOptions);
   }
 
   public async getHandleClient(): Promise<any> {
