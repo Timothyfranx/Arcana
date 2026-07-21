@@ -1,5 +1,5 @@
 import hre from "hardhat";
-import { ArcanaClient } from "../src/sdk/index.js";
+import { ArcanaClient, ProtocolAdapter } from "../src/sdk/index.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -65,62 +65,18 @@ async function main() {
     console.log("Gnosis Safe already has sufficient balance.");
   }
 
-  // 2. Construct Safe Payout Transaction parameters
-  console.log("\n[Step 2] Constructing Safe transaction and generating EOA owner signature...");
-  const recipient = walletAddress; // Send ETH back to ourselves
+  // 2. Construct Safe Payout Transaction parameters via SDK ProtocolAdapter
+  console.log("\n[Step 2] Constructing Safe transaction and generating EOA owner signature via ProtocolAdapter...");
+  const recipient = walletAddress; // Send ETH back to balance
   const transferAmount = ethers.parseEther("0.001");
-  const innerCalldata = "0x";
-  const operation = 0; // Call
-  const safeTxGas = 0n;
-  const baseGas = 0n;
-  const gasPrice = 0n;
-  const gasToken = ethers.ZeroAddress;
-  const refundReceiver = ethers.ZeroAddress;
-  const safeNonce = await safeContract.nonce();
 
-  // Call Safe contract to generate the transaction hash
-  console.log(`Generating Safe transaction hash for nonce ${safeNonce}...`);
-  const safeTxHash = await safeContract.getTransactionHash(
+  const { calldata: execCalldata, safeNonce } = await ProtocolAdapter.buildSafeTransaction({
+    safeAddress,
     recipient,
-    transferAmount,
-    innerCalldata,
-    operation,
-    safeTxGas,
-    baseGas,
-    gasPrice,
-    gasToken,
-    refundReceiver,
-    safeNonce
-  );
-  console.log(`Safe Transaction Hash: ${safeTxHash}`);
-
-  // Sign message
-  console.log("Signing Safe transaction hash...");
-  const rawSig = await wallet.signMessage(ethers.getBytes(safeTxHash));
-  const sig = ethers.Signature.from(rawSig);
-
-  // Adjust signature v parameter for standard eth_sign (v + 4)
-  const vAdjusted = sig.v + 4;
-  const safeSignature = ethers.hexlify(ethers.concat([
-    sig.r,
-    sig.s,
-    ethers.toBeArray(vAdjusted)
-  ]));
-  console.log(`Generated owner signature: ${safeSignature}`);
-
-  // Encode Safe.execTransaction call
-  const execCalldata = safeContract.interface.encodeFunctionData("execTransaction", [
-    recipient,
-    transferAmount,
-    innerCalldata,
-    operation,
-    safeTxGas,
-    baseGas,
-    gasPrice,
-    gasToken,
-    refundReceiver,
-    safeSignature
-  ]);
+    amount: transferAmount,
+    signer: wallet
+  });
+  console.log(`Generated Safe payout calldata for nonce ${safeNonce}. Size: ${ethers.getBytes(execCalldata).length} bytes`);
   console.log(`Encoded Safe execTransaction calldata size: ${(execCalldata.length - 2) / 2} bytes`);
 
   // 3. Encrypt Safe parameters via Arcana SDK Client

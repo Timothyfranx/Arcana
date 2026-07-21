@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { ArcanaClient } from "../../src/sdk/index.js";
+import { ArcanaClient, ProtocolAdapter } from "../../src/sdk/index.js";
 import "./style.css";
 
 // Ethereum Sepolia Configuration
@@ -15,11 +15,7 @@ const MOCK_SWAP_ABI = [
   "function swap(uint256 amount) external"
 ];
 
-const SAFE_ABI = [
-  "function nonce() view returns (uint256)",
-  "function getTransactionHash(address to, uint256 value, bytes calldata data, uint8 operation, uint256 safeTxGas, uint256 baseGas, uint256 gasPrice, address gasToken, address refundReceiver, uint256 _nonce) view returns (bytes32)",
-  "function execTransaction(address to, uint256 value, bytes calldata data, uint8 operation, uint256 safeTxGas, uint256 baseGas, uint256 gasPrice, address gasToken, address payable refundReceiver, bytes calldata signatures) external returns (bool success)"
-];
+
 
 let provider: ethers.BrowserProvider | null = null;
 let signer: ethers.Signer | null = null;
@@ -200,56 +196,15 @@ async function submitIntent() {
 
     if (selectedProtocol === "gnosis-safe") {
       btnSubmit.innerText = "Signing Safe transaction...";
-      const safeContract = new ethers.Contract(target, SAFE_ABI, signer);
-      const safeNonce = await safeContract.nonce();
-      
-      const recipient = userAddress;
-      const transferAmount = amount;
-      const innerCalldata = "0x";
-      const operation = 0;
-      const safeTxGas = 0n;
-      const baseGas = 0n;
-      const gasPrice = 0n;
-      const gasToken = ethers.ZeroAddress;
-      const refundReceiver = ethers.ZeroAddress;
-
-      const safeTxHash = await safeContract.getTransactionHash(
-        recipient,
-        transferAmount,
-        innerCalldata,
-        operation,
-        safeTxGas,
-        baseGas,
-        gasPrice,
-        gasToken,
-        refundReceiver,
-        safeNonce
-      );
-
-      const rawSig = await signer.signMessage(ethers.getBytes(safeTxHash));
-      const sig = ethers.Signature.from(rawSig);
-      const vAdjusted = sig.v + 4;
-      const safeSignature = ethers.hexlify(ethers.concat([
-        sig.r,
-        sig.s,
-        ethers.toBeArray(vAdjusted)
-      ]));
-
-      rawCalldata = safeContract.interface.encodeFunctionData("execTransaction", [
-        recipient,
-        transferAmount,
-        innerCalldata,
-        operation,
-        safeTxGas,
-        baseGas,
-        gasPrice,
-        gasToken,
-        refundReceiver,
-        safeSignature
-      ]);
+      const { calldata } = await ProtocolAdapter.buildSafeTransaction({
+        safeAddress: target,
+        recipient: userAddress,
+        amount,
+        signer
+      });
+      rawCalldata = calldata;
     } else {
-      const mockSwapInterface = new ethers.Interface(MOCK_SWAP_ABI);
-      rawCalldata = mockSwapInterface.encodeFunctionData("swap", [amount]);
+      rawCalldata = ProtocolAdapter.encodeCall(MOCK_SWAP_ABI, "swap", [amount]);
     }
 
     btnSubmit.innerText = "Encrypting parameters...";
