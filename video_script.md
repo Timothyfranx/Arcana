@@ -50,4 +50,4 @@ This script provides a step-by-step walkthrough for recording the hackathon subm
 
 *   **Visual**: Display `report.md` key achievements and benchmark latency table.
 *   **Voiceover**:
-    > "Arcana demonstrates 100% generality across real-world protocols, features a 50% parallelized decryption speedup, integrates live Chainlink price feeds, and ships with a standalone TypeScript SDK. Thank you for watching!"
+    > "Arcana validates a protocol-agnostic design against a real, unmodified Gnosis Safe deployment, features a 48.7% parallelized decryption speedup, integrates live Chainlink price feeds, and ships with a standalone TypeScript SDK. Thank you for watching!"

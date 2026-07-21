@@ -152,7 +152,7 @@ async function loadIntents() {
             <td>#${id}</td>
             <td><code>${targetShort}</code></td>
             <td>${intent.calldataLength} bytes</td>
-            <td>Price &gt;= 100</td>
+            <td>Confidential</td>
             <td><code>${checkHandle}</code></td>
             <td>${statusBadge}</td>
           </tr>
@@ -177,9 +177,17 @@ async function submitIntent() {
   if (!client || !signer) return;
 
   const target = inputTarget.value.trim();
-  const amount = BigInt(inputAmount.value);
   const threshold = BigInt(inputThreshold.value);
   const selectedProtocol = selectProtocol.value;
+
+  let amount: bigint;
+  try {
+    const rawVal = inputAmount.value.trim();
+    amount = rawVal.includes(".") ? ethers.parseEther(rawVal) : BigInt(rawVal);
+  } catch {
+    alert("Invalid amount specified. Please enter a valid number.");
+    return;
+  }
 
   if (!ethers.isAddress(target)) {
     alert("Invalid Ethereum target contract address.");
