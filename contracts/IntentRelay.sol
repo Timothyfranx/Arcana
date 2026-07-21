@@ -11,12 +11,15 @@ import {TEEType} from "@iexec-nox/nox-protocol-contracts/contracts/utils/TypeUti
  */
 contract IntentRelay {
     enum Status { Pending, Triggered, Executed, Cancelled }
-    enum CompareOp { GE, LE, GT, LT, EQ, NE }
+    enum LogicOp { NONE, AND, OR }
 
     struct Intent {
         address owner;
         bytes32 triggerConditionHandle;
         CompareOp compareOp;
+        bytes32 triggerConditionHandle2;
+        CompareOp compareOp2;
+        LogicOp logicOp;
         bytes32 targetHandle;
         bytes32[] calldataHandles;
         uint256 calldataLength;
@@ -63,7 +66,7 @@ contract IntentRelay {
     }
 
     /**
-     * @notice Submits a new confidential intent with encrypted trigger, target, and calldata handles.
+     * @notice Submits a single-condition confidential intent.
      */
     function submitIntent(
         bytes32 triggerConditionHandle,
@@ -77,8 +80,6 @@ contract IntentRelay {
     ) external {
         if (calldataHandles.length != calldataProofs.length) revert ProofArrayMismatch();
 
-        // 1. Validate the user-submitted handles using their EIP-712 proofs.
-        // This grants transient access to this contract.
         INoxCompute(noxCompute).validateInputProof(triggerConditionHandle, msg.sender, triggerProof, TEEType.Uint256);
         INoxCompute(noxCompute).validateInputProof(targetHandle, msg.sender, targetProof, TEEType.Uint256);
         
@@ -86,7 +87,6 @@ contract IntentRelay {
             INoxCompute(noxCompute).validateInputProof(calldataHandles[i], msg.sender, calldataProofs[i], TEEType.Uint256);
         }
 
-        // 2. Persist access for this contract to perform comparisons and grant viewer rights on trigger.
         INoxCompute(noxCompute).allow(triggerConditionHandle, address(this));
         INoxCompute(noxCompute).allow(targetHandle, address(this));
         
@@ -94,12 +94,14 @@ contract IntentRelay {
             INoxCompute(noxCompute).allow(calldataHandles[i], address(this));
         }
 
-        // 3. Store the intent
         uint256 intentId = nextIntentId++;
         intents[intentId] = Intent({
             owner: msg.sender,
             triggerConditionHandle: triggerConditionHandle,
             compareOp: compareOp,
+            triggerConditionHandle2: bytes32(0),
+            compareOp2: CompareOp.GE,
+            logicOp: LogicOp.NONE,
             targetHandle: targetHandle,
             calldataHandles: calldataHandles,
             calldataLength: calldataLength,
@@ -111,7 +113,69 @@ contract IntentRelay {
     }
 
     /**
-     * @notice Initiates a trigger evaluation by comparing a current market value against the intent condition.
+     * @notice Submits a multi-condition confidential intent composed with boolean AND/OR logic.
+     */
+    function submitIntentMultiCondition(
+        bytes32 triggerConditionHandle1,
+        CompareOp compareOp1,
+        bytes32 triggerConditionHandle2,
+        CompareOp compareOp2,
+        LogicOp logicOp,
+        bytes32 targetHandle,
+        bytes32[] calldata calldataHandles,
+        uint256 calldataLength,
+        bytes calldata triggerProof1,
+        bytes calldata triggerProof2,
+        bytes calldata targetProof,
+        bytes[] calldata calldataProofs
+    ) external {
+        if (calldataHandles.length != calldataProofs.length) revert ProofArrayMismatch();
+
+        INoxCompute(noxCompute).validateInputProof(triggerConditionHandle1, msg.sender, triggerProof1, TEEType.Uint256);
+        INoxCompute(noxCompute).validateInputProof(triggerConditionHandle2, msg.sender, triggerProof2, TEEType.Uint256);
+        INoxCompute(noxCompute).validateInputProof(targetHandle, msg.sender, targetProof, TEEType.Uint256);
+        
+        for (uint256 i = 0; i < calldataHandles.length; i++) {
+            INoxCompute(noxCompute).validateInputProof(calldataHandles[i], msg.sender, calldataProofs[i], TEEType.Uint256);
+        }
+
+        INoxCompute(noxCompute).allow(triggerConditionHandle1, address(this));
+        INoxCompute(noxCompute).allow(triggerConditionHandle2, address(this));
+        INoxCompute(noxCompute).allow(targetHandle, address(this));
+        
+        for (uint256 i = 0; i < calldataHandles.length; i++) {
+            INoxCompute(noxCompute).allow(calldataHandles[i], address(this));
+        }
+
+        uint256 intentId = nextIntentId++;
+        intents[intentId] = Intent({
+            owner: msg.sender,
+            triggerConditionHandle: triggerConditionHandle1,
+            compareOp: compareOp1,
+            triggerConditionHandle2: triggerConditionHandle2,
+            compareOp2: compareOp2,
+            logicOp: logicOp,
+            targetHandle: targetHandle,
+            calldataHandles: calldataHandles,
+            calldataLength: calldataLength,
+            status: Status.Pending,
+            activeCheckHandle: bytes32(0)
+        });
+
+        emit IntentSubmitted(intentId, msg.sender);
+    }
+
+    function _evaluateOp(bytes32 valHandle, bytes32 triggerHandle, CompareOp op) internal returns (bytes32) {
+        if (op == CompareOp.GE) return INoxCompute(noxCompute).ge(valHandle, triggerHandle);
+        if (op == CompareOp.LE) return INoxCompute(noxCompute).le(valHandle, triggerHandle);
+        if (op == CompareOp.GT) return INoxCompute(noxCompute).gt(valHandle, triggerHandle);
+        if (op == CompareOp.LT) return INoxCompute(noxCompute).lt(valHandle, triggerHandle);
+        if (op == CompareOp.EQ) return INoxCompute(noxCompute).eq(valHandle, triggerHandle);
+        return INoxCompute(noxCompute).ne(valHandle, triggerHandle);
+    }
+
+    /**
+     * @notice Initiates a single-condition trigger evaluation.
      */
     function requestTriggerCheck(
         uint256 intentId,
@@ -122,32 +186,50 @@ contract IntentRelay {
         Intent storage intent = intents[intentId];
         if (intent.status != Status.Pending) revert InvalidStatus(Status.Pending, intent.status);
 
-        // 1. Validate the current market value handle.
-        // This grants transient access to this contract.
         INoxCompute(noxCompute).validateInputProof(currentValueHandle, currentValueOwner, currentValueProof, TEEType.Uint256);
 
-        // 2. Call the encrypted comparison operator.
-        bytes32 resultHandle;
-        if (intent.compareOp == CompareOp.GE) {
-            resultHandle = INoxCompute(noxCompute).ge(currentValueHandle, intent.triggerConditionHandle);
-        } else if (intent.compareOp == CompareOp.LE) {
-            resultHandle = INoxCompute(noxCompute).le(currentValueHandle, intent.triggerConditionHandle);
-        } else if (intent.compareOp == CompareOp.GT) {
-            resultHandle = INoxCompute(noxCompute).gt(currentValueHandle, intent.triggerConditionHandle);
-        } else if (intent.compareOp == CompareOp.LT) {
-            resultHandle = INoxCompute(noxCompute).lt(currentValueHandle, intent.triggerConditionHandle);
-        } else if (intent.compareOp == CompareOp.EQ) {
-            resultHandle = INoxCompute(noxCompute).eq(currentValueHandle, intent.triggerConditionHandle);
-        } else {
-            resultHandle = INoxCompute(noxCompute).ne(currentValueHandle, intent.triggerConditionHandle);
-        }
+        bytes32 resultHandle = _evaluateOp(currentValueHandle, intent.triggerConditionHandle, intent.compareOp);
 
-        // 3. Allow public decryption of the comparison result so keepers/relayers can verify it.
         INoxCompute(noxCompute).allowPublicDecryption(resultHandle);
-
         intent.activeCheckHandle = resultHandle;
 
         emit TriggerCheckRequested(intentId, resultHandle);
+    }
+
+    /**
+     * @notice Initiates a multi-condition trigger evaluation using boolean AND/OR composition inside TEE.
+     */
+    function requestTriggerCheckMulti(
+        uint256 intentId,
+        bytes32 currentValueHandle1,
+        address owner1,
+        bytes calldata proof1,
+        bytes32 currentValueHandle2,
+        address owner2,
+        bytes calldata proof2
+    ) external onlyOracle {
+        Intent storage intent = intents[intentId];
+        if (intent.status != Status.Pending) revert InvalidStatus(Status.Pending, intent.status);
+
+        INoxCompute(noxCompute).validateInputProof(currentValueHandle1, owner1, proof1, TEEType.Uint256);
+        INoxCompute(noxCompute).validateInputProof(currentValueHandle2, owner2, proof2, TEEType.Uint256);
+
+        bytes32 res1 = _evaluateOp(currentValueHandle1, intent.triggerConditionHandle, intent.compareOp);
+        bytes32 res2 = _evaluateOp(currentValueHandle2, intent.triggerConditionHandle2, intent.compareOp2);
+
+        bytes32 compositeResult;
+        if (intent.logicOp == LogicOp.AND) {
+            compositeResult = INoxCompute(noxCompute).and(res1, res2);
+        } else if (intent.logicOp == LogicOp.OR) {
+            compositeResult = INoxCompute(noxCompute).or(res1, res2);
+        } else {
+            compositeResult = res1;
+        }
+
+        INoxCompute(noxCompute).allowPublicDecryption(compositeResult);
+        intent.activeCheckHandle = compositeResult;
+
+        emit TriggerCheckRequested(intentId, compositeResult);
     }
 
     /**

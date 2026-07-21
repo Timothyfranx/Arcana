@@ -186,4 +186,78 @@ describe("Keeper Loop and Relayer Integration Test", function () {
     const strangerRelay = intentRelay.connect(stranger);
     await expect(strangerRelay.markExecuted(0n)).to.be.revertedWithCustomError(intentRelay, "OnlyRelayer");
   });
+
+  it("Should evaluate multi-condition composed encrypted triggers (AND) inside TEE enclaves on-chain", async function () {
+    const connection = await network.getOrCreate("noxLocal");
+    const { ethers } = connection;
+    const [user, oracle, relayer] = await ethers.getSigners();
+    const handleClient = nox.getHandleClient(connection);
+
+    const IntentRelayFactory = await ethers.getContractFactory("IntentRelay", user);
+    const intentRelay = await IntentRelayFactory.deploy(NOX_COMPUTE_ADDRESS, relayer.address, oracle.address);
+    await intentRelay.waitForDeployment();
+
+    // User encrypts Condition 1: Price >= 100
+    const cond1 = await handleClient.encrypt(100n);
+    const proofCond1 = await handleClient.generateInputProof(cond1.handle, await user.getAddress());
+
+    // User encrypts Condition 2: Volatility <= 50
+    const cond2 = await handleClient.encrypt(50n);
+    const proofCond2 = await handleClient.generateInputProof(cond2.handle, await user.getAddress());
+
+    // User encrypts target address & calldata
+    const target = await handleClient.encrypt(12345n);
+    const proofTarget = await handleClient.generateInputProof(target.handle, await user.getAddress());
+
+    const calldataChunk = await handleClient.encrypt(9999n);
+    const proofCalldata = await handleClient.generateInputProof(calldataChunk.handle, await user.getAddress());
+
+    // Submit multi-condition intent: (Price >= 100) AND (Volatility <= 50)
+    await intentRelay.connect(user).submitIntentMultiCondition(
+      cond1.handle,
+      0, // CompareOp.GE
+      cond2.handle,
+      1, // CompareOp.LE
+      1, // LogicOp.AND
+      target.handle,
+      [calldataChunk.handle],
+      32,
+      proofCond1,
+      proofCond2,
+      proofTarget,
+      [proofCalldata]
+    );
+
+    // Oracle encrypts current market values: Price = 110, Volatility = 40 (Both conditions met!)
+    const val1 = await handleClient.encrypt(110n);
+    const proofVal1 = await handleClient.generateInputProof(val1.handle, await oracle.getAddress());
+
+    const val2 = await handleClient.encrypt(40n);
+    const proofVal2 = await handleClient.generateInputProof(val2.handle, await oracle.getAddress());
+
+    // Oracle requests multi-condition check
+    const tx = await intentRelay.connect(oracle).requestTriggerCheckMulti(
+      0n,
+      val1.handle,
+      await oracle.getAddress(),
+      proofVal1,
+      val2.handle,
+      await oracle.getAddress(),
+      proofVal2
+    );
+    await tx.wait();
+
+    const intent = await intentRelay.intents(0n);
+    const checkHandle = intent.activeCheckHandle;
+    expect(checkHandle).to.not.equal(ethers.ZeroHash);
+
+    // Poll decryption proof of composite result
+    const decryptionProof = await handleClient.pollDecryptionProof(checkHandle);
+
+    // Verify trigger on-chain
+    await intentRelay.connect(oracle).verifyTrigger(0n, decryptionProof);
+
+    const updatedIntent = await intentRelay.intents(0n);
+    expect(updatedIntent.status).to.equal(1n); // Status.Triggered!
+  });
 });
