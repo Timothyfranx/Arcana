@@ -173,4 +173,17 @@ describe("Keeper Loop and Relayer Integration Test", function () {
     expect(executed).to.be.true;
     console.log("Keeper Loop and Relayer successfully executed the intent automatically on price trigger!");
   });
+
+  it("Should revert if markExecuted is called by an unauthorized non-relayer account", async function () {
+    const connection = await network.getOrCreate("noxLocal");
+    const { ethers } = connection;
+    const [user, relayer, stranger] = await ethers.getSigners();
+
+    const IntentRelayFactory = await ethers.getContractFactory("IntentRelay", user);
+    const intentRelay = await IntentRelayFactory.deploy(NOX_COMPUTE_ADDRESS, user.address, relayer.address);
+    await intentRelay.waitForDeployment();
+
+    const strangerRelay = intentRelay.connect(stranger);
+    await expect(strangerRelay.markExecuted(0n)).to.be.revertedWithCustomError(intentRelay, "OnlyRelayer");
+  });
 });

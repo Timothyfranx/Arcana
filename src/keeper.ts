@@ -61,7 +61,8 @@ async function main() {
 
   const CHAINLINK_ETH_USD_SEPOLIA = "0x694AA1769357215DE4FAC081bf1f309aDC325306";
   const CHAINLINK_ABI = [
-    "function latestRoundData() external view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)"
+    "function latestRoundData() external view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
+    "function decimals() external view returns (uint8)"
   ];
 
   const runLoop = async () => {
@@ -71,9 +72,11 @@ async function main() {
         try {
           const chainlink = new ethers.Contract(CHAINLINK_ETH_USD_SEPOLIA, CHAINLINK_ABI, provider);
           const roundData = await chainlink.latestRoundData();
+          const decimals = Number(await chainlink.decimals());
           const rawPrice = roundData.answer as bigint;
-          currentPrice = rawPrice / 100000000n; // Convert 8 decimals to USD integer
-          console.log(`[Chainlink Oracle] Fetched real-time Sepolia ETH/USD price: $${currentPrice}`);
+          const divisor = 10n ** BigInt(decimals);
+          currentPrice = rawPrice / divisor; // Dynamically convert decimals to USD integer
+          console.log(`[Chainlink Oracle] Fetched real-time Sepolia ETH/USD price: $${currentPrice} (${decimals} decimals)`);
         } catch (err: any) {
           console.warn(`[Chainlink Oracle] Fallback to mock price due to fetch error: ${err.message || err}`);
         }

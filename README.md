@@ -69,7 +69,24 @@ sequenceDiagram
 ### 2. Gnosis Safe Payout Demo (484 bytes calldata, 16 chunks)
 *   **Client Parameters Encryption**: **18.94s** (Encrypting trigger condition, target address, and 16 calldata chunks).
 *   **TEE Async Comparison Latency**: **12.04s** (TEE worker enclave execution on testnet).
-*   **Relayer Decryption Latency (Optimized parallelized)**: **18.18s** (Reduced from **35.45s** using parallel `Promise.all` decryption; includes ~12s subgraph indexer delay and ~6s parallel TEE API requests).
+---
+
+## Verified On-Chain Deployments & Live Sepolia Transactions
+
+### Smart Contracts
+* **[`IntentRelay.sol`](https://eth-sepolia.blockscout.com/address/0x9BF3f5db0442a59A074B728cD23F719D57375A9b#code)**: Deployed & Verified on Blockscout / Sourcify at `0x9BF3f5db0442a59A074B728cD23F719D57375A9b`.
+* **Gnosis Safe Singleton (v1.3.0)**: Official Canonical Safe Master Copy on Sepolia at `0x69f4d1788e39c87893c980c06edf4b7f686e2938`.
+* **Gnosis Safe Proxy**: Deployed Safe Proxy instance at `0xC40ec2fD95830F37D5744489018693031c8AC6eE`.
+* **Chainlink Price Feed**: Official Sepolia ETH/USD Aggregator at `0x694AA1769357215DE4FAC081bf1f309aDC325306`.
+
+### Live Sepolia Execution Pipeline Transactions
+* **Safe Proxy Deployment**: [`0xf981f814f9386715...`](https://sepolia.etherscan.io/tx/0xf981f814f93867154ef9e6a44b83755747f6617a230efc5205c6b66cbd6c1841)
+* **Safe Funding (0.005 ETH)**: [`0xbe54bc91b7ee562c...`](https://sepolia.etherscan.io/tx/0xbe54bc91b7ee562c7ed0ca19c7b9b6d3eca47137ea1b94c92468e2ffaf214c80)
+* **`submitIntent` (Safe Payout)**: [`0xdeac5438e579de06...`](https://sepolia.etherscan.io/tx/0xdeac5438e579de0607410bdc903850f87ebfbfe5fb8fad8df55924db4417fbb2)
+* **`requestTriggerCheck` (Keeper)**: [`0xe53fcdbe244ce210...`](https://sepolia.etherscan.io/tx/0xe53fcdbe244ce21064d8efc2a0022066666121ea4fc6182ffb7220802c2bbe34)
+* **`verifyTrigger` (TEE Verification)**: [`0xac1aa3e5b375500a...`](https://sepolia.etherscan.io/tx/0xac1aa3e5b375500aa77728c63eef1713e2499b74e3979d2a8aa24d7dd62d33aa)
+* **Gnosis Safe Payout Execution**: [`0xb7a2bad9cbd1fa8...`](https://sepolia.etherscan.io/tx/0xb7a2bad9cbd1fa8a80da9a36633e4ca6bbf82474408b5653facb5f95f63c3280)
+* **`markExecuted`**: [`0x762bcce93ddec60f...`](https://sepolia.etherscan.io/tx/0x762bcce93ddec60ffe2ed4fbb47fff2c7515be8b914efdd64ef00004fea48fe2)
 
 ---
 
@@ -124,3 +141,11 @@ npx hardhat run scripts/demo_safe.ts --network sepolia
 1. **Whitelisted Price Oracles**: Gated `requestTriggerCheck` to prevent arbitrary price manipulation. Gated by a whitelisted `priceOracle` address.
 2. **Parallelized Decryption**: Safe execution calldata is split into multiple 32-byte chunks. The SDK decrypts all chunks concurrently in parallel (`Promise.all`) once the subgraph indexes the permission change, eliminating linear network latency.
 3. **Calldata Chunking**: Because the current Nox JS SDK only supports encrypting 32-byte numeric types (`uint256`), generic swap/multisig calldata of arbitrary length is padded, divided into 32-byte chunks, and encrypted client-side. The relayer decrypts these chunks off-chain and trims the padding dynamically using the on-chain stored `calldataLength`.
+
+---
+
+## Known Limitations & Future Work
+
+1. **Whitelisted Oracle Key Model**: In the current iteration, price check requests are gated by a whitelisted `priceOracle` address. In production, this can be decentralized into a network of independent oracle keepers verifying multi-source prices.
+2. **Oracle Feed Staleness & Freshness Verification**: The keeper reads live price feeds directly from Chainlink Sepolia aggregators. Production deployments would incorporate explicit staleness thresholds (`block.timestamp - updatedAt < maxStaleness`) directly within contract-level assertions.
+3. **Public Mempool Relayer Transactions**: While intent target addresses and calldata payloads remain encrypted off-chain until execution, the final execution transaction dispatched by the Relayer daemon enters the standard Ethereum transaction pool. Integrating private transaction RPC endpoints (e.g. Flashbots Protect or MEV-Share) would eliminate frontrunning at execution time.
