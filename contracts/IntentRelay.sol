@@ -49,6 +49,7 @@ contract IntentRelay {
     error NoActiveCheck();
     error InvalidProofLength();
     error ProofArrayMismatch();
+    error InvalidLogicOp();
 
     modifier onlyRelayer() {
         if (msg.sender != relayer) revert OnlyRelayer();
@@ -186,9 +187,9 @@ contract IntentRelay {
     ) external onlyOracle {
         Intent storage intent = intents[intentId];
         if (intent.status != Status.Pending) revert InvalidStatus(Status.Pending, intent.status);
+        if (intent.logicOp != LogicOp.NONE) revert InvalidLogicOp();
 
         INoxCompute(noxCompute).validateInputProof(currentValueHandle, currentValueOwner, currentValueProof, TEEType.Uint256);
-        INoxCompute(noxCompute).allow(currentValueHandle, address(this));
 
         bytes32 resultHandle = _evaluateOp(currentValueHandle, intent.triggerConditionHandle, intent.compareOp);
 
@@ -212,14 +213,33 @@ contract IntentRelay {
     ) external onlyOracle {
         Intent storage intent = intents[intentId];
         if (intent.status != Status.Pending) revert InvalidStatus(Status.Pending, intent.status);
+        if (intent.logicOp == LogicOp.NONE) revert InvalidLogicOp();
 
         INoxCompute(noxCompute).validateInputProof(currentValueHandle1, owner1, proof1, TEEType.Uint256);
         INoxCompute(noxCompute).validateInputProof(currentValueHandle2, owner2, proof2, TEEType.Uint256);
 
-        bytes32 res1 = _evaluateOp(currentValueHandle1, intent.triggerConditionHandle, intent.compareOp);
-        bytes32 res2 = _evaluateOp(currentValueHandle2, intent.triggerConditionHandle2, intent.compareOp2);
+        bytes32 b1 = _evaluateOp(currentValueHandle1, intent.triggerConditionHandle, intent.compareOp);
+        bytes32 b2 = _evaluateOp(currentValueHandle2, intent.triggerConditionHandle2, intent.compareOp2);
 
-        bytes32 compositeResult = res1;
+        bytes32 hZERO = INoxCompute(noxCompute).wrapAsPublicHandle(bytes32(uint256(0)), TEEType.Uint256);
+        bytes32 hONE  = INoxCompute(noxCompute).wrapAsPublicHandle(bytes32(uint256(1)), TEEType.Uint256);
+        bytes32 hTWO  = INoxCompute(noxCompute).wrapAsPublicHandle(bytes32(uint256(2)), TEEType.Uint256);
+
+        bytes32 u1 = INoxCompute(noxCompute).select(b1, hONE, hZERO);
+        bytes32 u2 = INoxCompute(noxCompute).select(b2, hONE, hZERO);
+
+        bytes32 sum = INoxCompute(noxCompute).add(u1, u2);
+
+        bytes32 compositeResult;
+        if (intent.logicOp == LogicOp.AND) {
+            // Both must be 1 => sum >= 2
+            compositeResult = INoxCompute(noxCompute).ge(sum, hTWO);
+        } else if (intent.logicOp == LogicOp.OR) {
+            // At least one is 1 => sum >= 1
+            compositeResult = INoxCompute(noxCompute).ge(sum, hONE);
+        } else {
+            compositeResult = b1;
+        }
 
         INoxCompute(noxCompute).allowPublicDecryption(compositeResult);
         intent.activeCheckHandle = compositeResult;

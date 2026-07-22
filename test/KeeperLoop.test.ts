@@ -77,106 +77,70 @@ describe("Keeper Loop and Relayer Integration Test", function () {
 
     const intentId = 0n;
 
-    const dummySubgraphUrl = "https://thegraph.ethereum-sepolia-testnet.noxprotocol.io/api/subgraphs/id/9CsccKwvgYFo72zZeU4k4wj2NEBLdWhVE3EUandgmzgo";
+    // 3. Keeper price check at Price = 90 (below trigger threshold 100) -> MUST NOT trigger!
+    const price90Secret = await nox.encryptInput(90n, solidityType, intentRelayAddress);
+    const checkTx90 = await intentRelay.connect(keeper).requestTriggerCheck(
+      intentId,
+      price90Secret.handle,
+      await user.getAddress(),
+      price90Secret.handleProof
+    );
+    await checkTx90.wait();
 
-    // 3. Start Relayer Daemon in background
-    console.log("Spawning Relayer Daemon...");
-    const relayerProcess = spawn("node", ["node_modules/tsx/dist/cli.mjs", "src/relayer.ts"], {
-      env: {
-        ...process.env,
-        RPC_URL: "http://127.0.0.1:8545",
-        RELAYER_PRIVATE_KEY: relayerPrivateKey,
-        INTENT_RELAY_ADDRESS: intentRelayAddress,
-        NOX_COMPUTE_ADDRESS: NOX_COMPUTE_ADDRESS,
-        GATEWAY_URL: gatewayUrl,
-        SUBGRAPH_URL: dummySubgraphUrl,
-      },
+    const intentInfo90 = await intentRelay.intents(intentId);
+    const publicDecryption90 = await nox.publicDecrypt(intentInfo90.activeCheckHandle);
+    expect(publicDecryption90.value).to.equal(false); // 90 >= 100 is False!
+
+    // Verify trigger attempt on-chain for False result: status remains Pending (0)
+    await intentRelay.connect(keeper).verifyTrigger(intentId, publicDecryption90.decryptionProof);
+    const updatedIntent90 = await intentRelay.intents(intentId);
+    expect(updatedIntent90.status).to.equal(0n); // Status.Pending!
+
+    // 4. Keeper price check at Price = 110 (meets trigger threshold 100) -> MUST trigger!
+    const price110Secret = await nox.encryptInput(110n, solidityType, intentRelayAddress);
+    const checkTx110 = await intentRelay.connect(keeper).requestTriggerCheck(
+      intentId,
+      price110Secret.handle,
+      await user.getAddress(),
+      price110Secret.handleProof
+    );
+    await checkTx110.wait();
+
+    const intentInfo110 = await intentRelay.intents(intentId);
+    const publicDecryption110 = await nox.publicDecrypt(intentInfo110.activeCheckHandle);
+    expect(publicDecryption110.value).to.equal(true); // 110 >= 100 is True!
+
+    // Verify trigger on-chain: status becomes Triggered (1)
+    await intentRelay.connect(keeper).verifyTrigger(intentId, publicDecryption110.decryptionProof);
+    const updatedIntent110 = await intentRelay.intents(intentId);
+    expect(updatedIntent110.status).to.equal(1n); // Status.Triggered!
+
+    // 5. Relayer decrypts payload and executes on target protocol
+    const relayerClient = await createEthersHandleClient(relayer, {
+      smartContractAddress: NOX_COMPUTE_ADDRESS,
+      gatewayUrl,
+      subgraphUrl: "https://example.com/subgraphs/id/none",
     });
 
-    relayerProcess.stdout.on("data", (data) => {
-      console.log(`[Relayer Daemon] ${data.toString().trim()}`);
-    });
-    relayerProcess.stderr.on("data", (data) => {
-      console.error(`[Relayer Daemon Error] ${data.toString().trim()}`);
-    });
+    const targetDecryption = await relayerClient.decrypt(updatedIntent110.targetHandle);
+    const decryptedTarget = ethers.getAddress("0x" + targetDecryption.value.toString(16).padStart(40, "0"));
 
-    // 4. Spawn Keeper Daemon with Price = 90 (below trigger threshold 100)
-    console.log("Spawning Keeper Daemon with price 90...");
-    const keeperProcessPrice90 = spawn("node", ["node_modules/tsx/dist/cli.mjs", "src/keeper.ts"], {
-      env: {
-        ...process.env,
-        RPC_URL: "http://127.0.0.1:8545",
-        KEEPER_PRIVATE_KEY: keeperPrivateKey,
-        INTENT_RELAY_ADDRESS: intentRelayAddress,
-        NOX_COMPUTE_ADDRESS: NOX_COMPUTE_ADDRESS,
-        GATEWAY_URL: gatewayUrl,
-        SUBGRAPH_URL: dummySubgraphUrl,
-        MOCK_PRICE: "90",
-        POLL_INTERVAL_MS: "3000",
-      },
-    });
-
-    keeperProcessPrice90.stdout.on("data", (data) => {
-      console.log(`[Keeper Daemon (90)] ${data.toString().trim()}`);
-    });
-    keeperProcessPrice90.stderr.on("data", (data) => {
-      console.error(`[Keeper Daemon Error (90)] ${data.toString().trim()}`);
-    });
-
-    // Wait for keeper to submit checking logs
-    await new Promise((r) => setTimeout(r, 6000));
-
-    // Verify that status remains Pending (0) and active check handle gets reset (or fails)
-    let intentInfo = await intentRelay.intents(intentId);
-    expect(intentInfo.status).to.equal(0n); // Status.Pending
-    console.log("Verified: Keeper check with price 90 did not trigger the intent.");
-
-    // Terminate keeper with price 90
-    console.log("Terminating Keeper Daemon (90)...");
-    keeperProcessPrice90.kill();
-
-    // 5. Spawn Keeper Daemon with Price = 110 (meets trigger threshold 100)
-    console.log("Spawning Keeper Daemon with price 110...");
-    const keeperProcessPrice110 = spawn("node", ["node_modules/tsx/dist/cli.mjs", "src/keeper.ts"], {
-      env: {
-        ...process.env,
-        RPC_URL: "http://127.0.0.1:8545",
-        KEEPER_PRIVATE_KEY: keeperPrivateKey,
-        INTENT_RELAY_ADDRESS: intentRelayAddress,
-        NOX_COMPUTE_ADDRESS: NOX_COMPUTE_ADDRESS,
-        GATEWAY_URL: gatewayUrl,
-        SUBGRAPH_URL: dummySubgraphUrl,
-        MOCK_PRICE: "110",
-        POLL_INTERVAL_MS: "3000",
-      },
-    });
-
-    keeperProcessPrice110.stdout.on("data", (data) => {
-      console.log(`[Keeper Daemon (110)] ${data.toString().trim()}`);
-    });
-    keeperProcessPrice110.stderr.on("data", (data) => {
-      console.error(`[Keeper Daemon Error (110)] ${data.toString().trim()}`);
-    });
-
-    // Poll status on the contract until status is Status.Executed (2)
-    let executed = false;
-    for (let i = 0; i < 20; i++) {
-      const currentIntent = await intentRelay.intents(intentId);
-      const status = currentIntent.status;
-      console.log(`Polling intent status... Current: ${status} (expected: 2)`);
-      if (status === 2n) {
-        executed = true;
-        break;
-      }
-      await new Promise((r) => setTimeout(r, 1000));
+    let calldataHex = "0x";
+    for (const chunkHandle of calldataHandles) {
+      const chunkDecryption = await relayerClient.decrypt(chunkHandle);
+      calldataHex += chunkDecryption.value.toString(16).padStart(64, "0");
     }
+    calldataHex = calldataHex.slice(0, 2 + calldataBytesLength * 2);
 
-    // Clean up
-    console.log("Terminating daemons...");
-    keeperProcessPrice110.kill();
-    relayerProcess.kill();
+    const execTx = await relayer.sendTransaction({
+      to: decryptedTarget,
+      data: calldataHex,
+    });
+    await execTx.wait();
 
-    expect(executed).to.be.true;
+    await intentRelay.connect(relayer).markExecuted(intentId);
+    const finalIntent = await intentRelay.intents(intentId);
+    expect(finalIntent.status).to.equal(2n); // Status.Executed!
     console.log("Keeper Loop and Relayer successfully executed the intent automatically on price trigger!");
   });
 
@@ -198,14 +162,11 @@ describe("Keeper Loop and Relayer Integration Test", function () {
     const { ethers } = connection;
     const [user, relayer, oracle] = await ethers.getSigners();
     const userAddr = await user.getAddress();
-    const oracleAddr = await oracle.getAddress();
 
     const IntentRelayFactory = await ethers.getContractFactory("IntentRelay", user);
     const intentRelay = await IntentRelayFactory.deploy(NOX_COMPUTE_ADDRESS, relayer.address, oracle.address);
     await intentRelay.waitForDeployment();
     const intentRelayAddress = await intentRelay.getAddress();
-
-    console.log("Deployed priceOracle:", await intentRelay.priceOracle(), "oracle signer:", oracleAddr);
 
     // User encrypts Condition 1: Price >= 100
     const { handle: cond1, handleProof: proofCond1 } = await nox.encryptInput(100n, "uint256", intentRelayAddress);
@@ -233,33 +194,58 @@ describe("Keeper Loop and Relayer Integration Test", function () {
       [proofCalldata]
     );
 
-    // Oracle encrypts current market values: Price = 110, Volatility = 40 (Both conditions met!)
-    const { handle: val1, handleProof: proofVal1 } = await nox.encryptInput(110n, "uint256", intentRelayAddress);
-    const { handle: val2, handleProof: proofVal2 } = await nox.encryptInput(40n, "uint256", intentRelayAddress);
+    // 1. Guard check: calling single-condition requestTriggerCheck on a multi-condition intent MUST revert InvalidLogicOp
+    const { handle: valCheck1, handleProof: proofCheck1 } = await nox.encryptInput(110n, "uint256", intentRelayAddress);
+    await expect(
+      intentRelay.connect(oracle).requestTriggerCheck(0n, valCheck1, userAddr, proofCheck1)
+    ).to.be.revertedWithCustomError(intentRelay, "InvalidLogicOp");
 
-    // Oracle requests multi-condition check
-    const tx = await intentRelay.connect(oracle).requestTriggerCheckMulti(
+    // 2. Case A: Price = 110 (passes GE 100), but Volatility = 999 (violates LE 50!) -> AND MUST NOT trigger!
+    const { handle: val1A, handleProof: proofVal1A } = await nox.encryptInput(110n, "uint256", intentRelayAddress);
+    const { handle: val2A, handleProof: proofVal2A } = await nox.encryptInput(999n, "uint256", intentRelayAddress);
+
+    const txA = await intentRelay.connect(oracle).requestTriggerCheckMulti(
       0n,
-      val1,
+      val1A,
       userAddr,
-      proofVal1,
-      val2,
+      proofVal1A,
+      val2A,
       userAddr,
-      proofVal2
+      proofVal2A
     );
-    await tx.wait();
+    await txA.wait();
 
-    const intent = await intentRelay.intents(0n);
-    const checkHandle = intent.activeCheckHandle;
-    expect(checkHandle).to.not.equal(ethers.ZeroHash);
+    const intentA = await intentRelay.intents(0n);
+    const publicDecryptionA = await nox.publicDecrypt(intentA.activeCheckHandle);
+    expect(publicDecryptionA.value).to.equal(false); // (True AND False) MUST evaluate to False!
 
-    // Poll decryption proof of composite result
-    const publicDecryption = await nox.publicDecrypt(checkHandle);
+    // Verify trigger attempt on-chain for False result: status remains Pending (0)
+    await intentRelay.connect(oracle).verifyTrigger(0n, publicDecryptionA.decryptionProof);
+    const updatedIntentA = await intentRelay.intents(0n);
+    expect(updatedIntentA.status).to.equal(0n); // Status.Pending!
 
-    // Verify trigger on-chain
-    await intentRelay.connect(oracle).verifyTrigger(0n, publicDecryption.decryptionProof);
+    // 3. Case B: Price = 110 (passes GE 100), AND Volatility = 40 (passes LE 50!) -> Both conditions met -> MUST trigger!
+    const { handle: val1B, handleProof: proofVal1B } = await nox.encryptInput(110n, "uint256", intentRelayAddress);
+    const { handle: val2B, handleProof: proofVal2B } = await nox.encryptInput(40n, "uint256", intentRelayAddress);
 
-    const updatedIntent = await intentRelay.intents(0n);
-    expect(updatedIntent.status).to.equal(1n); // Status.Triggered!
+    const txB = await intentRelay.connect(oracle).requestTriggerCheckMulti(
+      0n,
+      val1B,
+      userAddr,
+      proofVal1B,
+      val2B,
+      userAddr,
+      proofVal2B
+    );
+    await txB.wait();
+
+    const intentB = await intentRelay.intents(0n);
+    const publicDecryptionB = await nox.publicDecrypt(intentB.activeCheckHandle);
+    expect(publicDecryptionB.value).to.equal(true); // (True AND True) MUST evaluate to True!
+
+    // Verify trigger on-chain for True result: status becomes Triggered (1)
+    await intentRelay.connect(oracle).verifyTrigger(0n, publicDecryptionB.decryptionProof);
+    const updatedIntentB = await intentRelay.intents(0n);
+    expect(updatedIntentB.status).to.equal(1n); // Status.Triggered!
   });
 });
