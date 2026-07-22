@@ -79,7 +79,7 @@ async function main() {
 
       // 2. Forward transaction to the target protocol (via private RPC if configured)
       console.log(`Submitting execution transaction to target: ${decryptedTargetAddress.slice(0, 6)}...${decryptedTargetAddress.slice(-4)}...`);
-      const nonce1 = Number(await dispatchProvider.send("eth_getTransactionCount", [relayerAddress, "latest"]));
+      const nonce1 = await provider.getTransactionCount(relayerAddress, "pending");
       const executionTx = await dispatchWallet.sendTransaction({
         to: decryptedTargetAddress,
         data: rebuiltCalldata,
@@ -91,7 +91,7 @@ async function main() {
 
       // 3. Mark intent as executed on-chain using SDK Client
       console.log(`Calling markExecuted for intent ID ${intentId} on-chain...`);
-      const nonce2 = Number(await dispatchProvider.send("eth_getTransactionCount", [relayerAddress, "latest"]));
+      const nonce2 = await provider.getTransactionCount(relayerAddress, "pending");
       const markTx = await client.markExecuted(intentId, nonce2);
       console.log(`Mark transaction sent: ${markTx.hash}. Waiting for confirmation...`);
       await markTx.wait();
