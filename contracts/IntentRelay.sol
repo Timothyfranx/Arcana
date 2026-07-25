@@ -34,6 +34,7 @@ contract IntentRelay {
     uint256 public nextIntentId;
 
     mapping(uint256 => Intent) public intents;
+    mapping(address => uint256[]) public ownerIntents;
 
     event IntentSubmitted(uint256 indexed intentId, address indexed owner);
     event TriggerCheckRequested(uint256 indexed intentId, bytes32 indexed resultHandle);
@@ -110,6 +111,7 @@ contract IntentRelay {
             status: Status.Pending,
             activeCheckHandle: bytes32(0)
         });
+        ownerIntents[msg.sender].push(intentId);
 
         emit IntentSubmitted(intentId, msg.sender);
     }
@@ -163,6 +165,7 @@ contract IntentRelay {
             status: Status.Pending,
             activeCheckHandle: bytes32(0)
         });
+        ownerIntents[msg.sender].push(intentId);
 
         emit IntentSubmitted(intentId, msg.sender);
     }
@@ -319,5 +322,12 @@ contract IntentRelay {
      */
     function getCalldataHandles(uint256 intentId) external view returns (bytes32[] memory) {
         return intents[intentId].calldataHandles;
+    }
+
+    /**
+     * @notice Helper to read all intent IDs owned by a specific address.
+     */
+    function getOwnerIntents(address owner) external view returns (uint256[] memory) {
+        return ownerIntents[owner];
     }
 }

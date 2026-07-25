@@ -6,16 +6,18 @@ import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, Typed
   
 
   export interface IntentRelayInterface extends Interface {
-    getFunction(nameOrSignature: "cancelIntent" | "getCalldataHandles" | "intents" | "markExecuted" | "nextIntentId" | "noxCompute" | "priceOracle" | "relayer" | "requestTriggerCheck" | "requestTriggerCheckMulti" | "submitIntent" | "submitIntentMultiCondition" | "verifyTrigger"): FunctionFragment;
+    getFunction(nameOrSignature: "cancelIntent" | "getCalldataHandles" | "getOwnerIntents" | "intents" | "markExecuted" | "nextIntentId" | "noxCompute" | "ownerIntents" | "priceOracle" | "relayer" | "requestTriggerCheck" | "requestTriggerCheckMulti" | "submitIntent" | "submitIntentMultiCondition" | "verifyTrigger"): FunctionFragment;
 
     getEvent(nameOrSignatureOrTopic: "IntentCancelled" | "IntentExecuted" | "IntentSubmitted" | "IntentTriggered" | "TriggerCheckFailed" | "TriggerCheckRequested"): EventFragment;
 
     encodeFunctionData(functionFragment: 'cancelIntent', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'getCalldataHandles', values: [BigNumberish]): string;
+encodeFunctionData(functionFragment: 'getOwnerIntents', values: [AddressLike]): string;
 encodeFunctionData(functionFragment: 'intents', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'markExecuted', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'nextIntentId', values?: undefined): string;
 encodeFunctionData(functionFragment: 'noxCompute', values?: undefined): string;
+encodeFunctionData(functionFragment: 'ownerIntents', values: [AddressLike, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'priceOracle', values?: undefined): string;
 encodeFunctionData(functionFragment: 'relayer', values?: undefined): string;
 encodeFunctionData(functionFragment: 'requestTriggerCheck', values: [BigNumberish, BytesLike, AddressLike, BytesLike]): string;
@@ -26,10 +28,12 @@ encodeFunctionData(functionFragment: 'verifyTrigger', values: [BigNumberish, Byt
 
     decodeFunctionResult(functionFragment: 'cancelIntent', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'getCalldataHandles', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'getOwnerIntents', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'intents', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'markExecuted', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'nextIntentId', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'noxCompute', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'ownerIntents', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'priceOracle', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'relayer', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'requestTriggerCheck', data: BytesLike): Result;
@@ -162,6 +166,14 @@ decodeFunctionResult(functionFragment: 'verifyTrigger', data: BytesLike): Result
     
 
     
+    getOwnerIntents: TypedContractMethod<
+      [owner: AddressLike, ],
+      [bigint[]],
+      'view'
+    >
+    
+
+    
     intents: TypedContractMethod<
       [arg0: BigNumberish, ],
       [[string, string, bigint, string, bigint, bigint, string, bigint, bigint, string] & {owner: string, triggerConditionHandle: string, compareOp: bigint, triggerConditionHandle2: string, compareOp2: bigint, logicOp: bigint, targetHandle: string, calldataLength: bigint, status: bigint, activeCheckHandle: string }],
@@ -189,6 +201,14 @@ decodeFunctionResult(functionFragment: 'verifyTrigger', data: BytesLike): Result
     noxCompute: TypedContractMethod<
       [],
       [string],
+      'view'
+    >
+    
+
+    
+    ownerIntents: TypedContractMethod<
+      [arg0: AddressLike, arg1: BigNumberish, ],
+      [bigint],
       'view'
     >
     
@@ -262,6 +282,11 @@ getFunction(nameOrSignature: 'getCalldataHandles'): TypedContractMethod<
       [string[]],
       'view'
     >;
+getFunction(nameOrSignature: 'getOwnerIntents'): TypedContractMethod<
+      [owner: AddressLike, ],
+      [bigint[]],
+      'view'
+    >;
 getFunction(nameOrSignature: 'intents'): TypedContractMethod<
       [arg0: BigNumberish, ],
       [[string, string, bigint, string, bigint, bigint, string, bigint, bigint, string] & {owner: string, triggerConditionHandle: string, compareOp: bigint, triggerConditionHandle2: string, compareOp2: bigint, logicOp: bigint, targetHandle: string, calldataLength: bigint, status: bigint, activeCheckHandle: string }],
@@ -280,6 +305,11 @@ getFunction(nameOrSignature: 'nextIntentId'): TypedContractMethod<
 getFunction(nameOrSignature: 'noxCompute'): TypedContractMethod<
       [],
       [string],
+      'view'
+    >;
+getFunction(nameOrSignature: 'ownerIntents'): TypedContractMethod<
+      [arg0: AddressLike, arg1: BigNumberish, ],
+      [bigint],
       'view'
     >;
 getFunction(nameOrSignature: 'priceOracle'): TypedContractMethod<

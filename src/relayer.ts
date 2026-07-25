@@ -46,7 +46,7 @@ async function main() {
   const relayerAddress = await wallet.getAddress();
   console.log(`Relayer Wallet Address: ${relayerAddress}`);
 
-  const privateMempoolUrl = process.env.PRIVATE_MEMPOOL_RPC_URL;
+  const privateMempoolUrl = isLocal ? undefined : process.env.PRIVATE_MEMPOOL_RPC_URL;
   const dispatchProvider = privateMempoolUrl ? new ethers.JsonRpcProvider(privateMempoolUrl) : provider;
   const dispatchWallet = new ethers.Wallet(privateKey, dispatchProvider);
 

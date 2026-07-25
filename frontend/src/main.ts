@@ -109,51 +109,48 @@ async function loadIntents() {
   try {
     intentsList.innerHTML = `<tr><td colspan="6" class="table-empty">Loading active intents...</td></tr>`;
     
-    const nextIntentId = await client.intentRelayContract.nextIntentId();
+    const userIntentIds: bigint[] = await client.intentRelayContract.getOwnerIntents(userAddress);
     const rowsHTML: string[] = [];
 
-    // Loop through all deployed intents and filter by owner
-    for (let id = 0n; id < nextIntentId; id++) {
+    // Query indexed intent IDs owned by the connected user
+    for (const id of userIntentIds) {
       const intent = await client.intentRelayContract.intents(id);
       
-      // Filter by owner (address comparison is case-insensitive)
-      if (intent.owner.toLowerCase() === userAddress.toLowerCase()) {
-        const statusNum = Number(intent.status);
-        let statusBadge = "";
-        
-        switch (statusNum) {
-          case 0:
-            statusBadge = `<span class="status-badge pending">Pending</span>`;
-            break;
-          case 1:
-            statusBadge = `<span class="status-badge triggered">Triggered</span>`;
-            break;
-          case 2:
-            statusBadge = `<span class="status-badge executed">Executed</span>`;
-            break;
-          case 3:
-            statusBadge = `<span class="status-badge secondary">Cancelled</span>`;
-            break;
-          default:
-            statusBadge = `<span class="status-badge secondary">Unknown</span>`;
-        }
-
-        const targetShort = `${intent.targetHandle.slice(0, 8)}...${intent.targetHandle.slice(-6)}`;
-        const checkHandle = intent.activeCheckHandle !== ethers.ZeroHash 
-          ? `${intent.activeCheckHandle.slice(0, 8)}...${intent.activeCheckHandle.slice(-6)}` 
-          : "None";
-
-        rowsHTML.push(`
-          <tr>
-            <td>#${id}</td>
-            <td><code>${targetShort}</code></td>
-            <td>${intent.calldataLength} bytes</td>
-            <td>Confidential</td>
-            <td><code>${checkHandle}</code></td>
-            <td>${statusBadge}</td>
-          </tr>
-        `);
+      const statusNum = Number(intent.status);
+      let statusBadge = "";
+      
+      switch (statusNum) {
+        case 0:
+          statusBadge = `<span class="status-badge pending">Pending</span>`;
+          break;
+        case 1:
+          statusBadge = `<span class="status-badge triggered">Triggered</span>`;
+          break;
+        case 2:
+          statusBadge = `<span class="status-badge executed">Executed</span>`;
+          break;
+        case 3:
+          statusBadge = `<span class="status-badge secondary">Cancelled</span>`;
+          break;
+        default:
+          statusBadge = `<span class="status-badge secondary">Unknown</span>`;
       }
+
+      const targetShort = `${intent.targetHandle.slice(0, 8)}...${intent.targetHandle.slice(-6)}`;
+      const checkHandle = intent.activeCheckHandle !== ethers.ZeroHash 
+        ? `${intent.activeCheckHandle.slice(0, 8)}...${intent.activeCheckHandle.slice(-6)}` 
+        : "None";
+
+      rowsHTML.push(`
+        <tr>
+          <td>#${id}</td>
+          <td><code>${targetShort}</code></td>
+          <td>${intent.calldataLength} bytes</td>
+          <td>Confidential</td>
+          <td><code>${checkHandle}</code></td>
+          <td>${statusBadge}</td>
+        </tr>
+      `);
     }
 
     if (rowsHTML.length === 0) {

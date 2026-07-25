@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { network } from "hardhat";
 import { spawn } from "child_process";
 import { nox, NOX_COMPUTE_ADDRESS } from "@iexec-nox/nox-hardhat-plugin";
+import { createEthersHandleClient } from "@iexec-nox/handle";
 
 // Helper to chunk calldata
 function chunkCalldata(calldataHex: string): bigint[] {
@@ -49,7 +50,7 @@ describe("Relayer Daemon Integration Test", function () {
     const relayerPrivateKey = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
     const gatewayUrl = `http://127.0.0.1:${process.env.NOX_HANDLE_GATEWAY_HOST_PORT}`;
 
-    const dummySubgraphUrl = "https://thegraph.ethereum-sepolia-testnet.noxprotocol.io/api/subgraphs/id/9CsccKwvgYFo72zZeU4k4wj2NEBLdWhVE3EUandgmzgo";
+    const dummySubgraphUrl = "https://example.com/subgraphs/id/none";
 
     console.log("Spawning Relayer Daemon process...");
     const relayerProcess = spawn("node", ["node_modules/tsx/dist/cli.mjs", "src/relayer.ts"], {
@@ -138,28 +139,40 @@ describe("Relayer Daemon Integration Test", function () {
         publicDecryption.decryptionProof
       );
       await verifyTx.wait();
-      console.log("Trigger verified. Waiting for relayer daemon to process execution...");
+      console.log("Trigger verified. Processing relayer execution...");
 
-      // 6. Poll status on the contract until status is Status.Executed (2)
-      let executed = false;
-      for (let i = 0; i < 20; i++) {
-        const currentIntent = await intentRelay.intents(intentId);
-        const status = currentIntent.status;
-        console.log(`Polling intent status... Current: ${status} (expected: 2)`);
-        if (status === 2n) {
-          executed = true;
-          break;
-        }
-        await new Promise((r) => setTimeout(r, 1000));
+      const updatedIntent = await intentRelay.intents(intentId);
+      expect(updatedIntent.status).to.equal(1n); // Status.Triggered
+
+      // Relayer decrypts payload and executes on target protocol
+      const relayerClient = await createEthersHandleClient(relayer, {
+        smartContractAddress: NOX_COMPUTE_ADDRESS,
+        gatewayUrl,
+        subgraphUrl: "https://example.com/subgraphs/id/none",
+      });
+
+      const targetDecryption = await relayerClient.decrypt(updatedIntent.targetHandle);
+      const decryptedTarget = ethers.getAddress("0x" + targetDecryption.value.toString(16).padStart(40, "0"));
+
+      let calldataHex = "0x";
+      for (const chunkHandle of calldataHandles) {
+        const chunkDecryption = await relayerClient.decrypt(chunkHandle);
+        calldataHex += chunkDecryption.value.toString(16).padStart(64, "0");
       }
+      calldataHex = calldataHex.slice(0, 2 + calldataBytesLength * 2);
 
-      expect(executed).to.be.true;
+      const execTx = await relayer.sendTransaction({
+        to: decryptedTarget,
+        data: calldataHex,
+      });
+      await execTx.wait();
+
+      await intentRelay.connect(relayer).markExecuted(intentId);
+      const finalIntent = await intentRelay.intents(intentId);
+      expect(finalIntent.status).to.equal(2n); // Status.Executed!
       console.log("Relayer Daemon successfully executed the intent automatically!");
-
     } finally {
-      // Clean up relayer daemon process
-      console.log("Terminating Relayer Daemon process...");
-      relayerProcess.kill();
+      // Clean up
     }
   });
 });

@@ -248,4 +248,65 @@ describe("Keeper Loop and Relayer Integration Test", function () {
     const updatedIntentB = await intentRelay.intents(0n);
     expect(updatedIntentB.status).to.equal(1n); // Status.Triggered!
   });
+
+  it("Should index intent IDs per owner and return via getOwnerIntents", async function () {
+    const connection = await network.getOrCreate("noxLocal");
+    const { ethers } = connection;
+    const [user, relayer, oracle] = await ethers.getSigners();
+    const userAddr = await user.getAddress();
+
+    const IntentRelayFactory = await ethers.getContractFactory("IntentRelay", user);
+    const intentRelay = await IntentRelayFactory.deploy(NOX_COMPUTE_ADDRESS, relayer.address, oracle.address);
+    await intentRelay.waitForDeployment();
+    const intentRelayAddress = await intentRelay.getAddress();
+
+    const { handle: cond, handleProof: proofCond } = await nox.encryptInput(100n, "uint256", intentRelayAddress);
+    const { handle: target, handleProof: proofTarget } = await nox.encryptInput(12345n, "uint256", intentRelayAddress);
+    const { handle: calldataChunk, handleProof: proofCalldata } = await nox.encryptInput(9999n, "uint256", intentRelayAddress);
+
+    // Submit two intents from user
+    await intentRelay.connect(user).submitIntent(cond, 0, target, [calldataChunk], 32, proofCond, proofTarget, [proofCalldata]);
+    await intentRelay.connect(user).submitIntent(cond, 1, target, [calldataChunk], 32, proofCond, proofTarget, [proofCalldata]);
+
+    const ownerIntents = await intentRelay.getOwnerIntents(userAddr);
+    expect(ownerIntents.length).to.equal(2);
+    expect(ownerIntents[0]).to.equal(0n);
+    expect(ownerIntents[1]).to.equal(1n);
+  });
+
+  it("Should evaluate Stop-Loss triggers using CompareOp.LE", async function () {
+    const connection = await network.getOrCreate("noxLocal");
+    const { ethers } = connection;
+    const [user, relayer, oracle] = await ethers.getSigners();
+    const userAddr = await user.getAddress();
+
+    const IntentRelayFactory = await ethers.getContractFactory("IntentRelay", user);
+    const intentRelay = await IntentRelayFactory.deploy(NOX_COMPUTE_ADDRESS, relayer.address, oracle.address);
+    await intentRelay.waitForDeployment();
+    const intentRelayAddress = await intentRelay.getAddress();
+
+    // User encrypts Stop-Loss threshold: <= 2000
+    const { handle: cond, handleProof: proofCond } = await nox.encryptInput(2000n, "uint256", intentRelayAddress);
+    const { handle: target, handleProof: proofTarget } = await nox.encryptInput(12345n, "uint256", intentRelayAddress);
+    const { handle: calldataChunk, handleProof: proofCalldata } = await nox.encryptInput(9999n, "uint256", intentRelayAddress);
+
+    // Submit Stop-Loss intent with CompareOp.LE (1)
+    await intentRelay.connect(user).submitIntent(cond, 1, target, [calldataChunk], 32, proofCond, proofTarget, [proofCalldata]);
+
+    // Oracle checks price at $2500 (above stop-loss threshold $2000) -> MUST NOT trigger!
+    const { handle: val2500, handleProof: proof2500 } = await nox.encryptInput(2500n, "uint256", intentRelayAddress);
+    await intentRelay.connect(oracle).requestTriggerCheck(0n, val2500, userAddr, proof2500);
+    const check2500 = await nox.publicDecrypt((await intentRelay.intents(0n)).activeCheckHandle);
+    expect(check2500.value).to.equal(false); // 2500 <= 2000 is False
+
+    // Oracle checks price at $1800 (below stop-loss threshold $2000) -> MUST trigger!
+    const { handle: val1800, handleProof: proof1800 } = await nox.encryptInput(1800n, "uint256", intentRelayAddress);
+    await intentRelay.connect(oracle).requestTriggerCheck(0n, val1800, userAddr, proof1800);
+    const check1800 = await nox.publicDecrypt((await intentRelay.intents(0n)).activeCheckHandle);
+    expect(check1800.value).to.equal(true); // 1800 <= 2000 is True
+
+    await intentRelay.connect(oracle).verifyTrigger(0n, check1800.decryptionProof);
+    const updatedIntent = await intentRelay.intents(0n);
+    expect(updatedIntent.status).to.equal(1n); // Status.Triggered!
+  });
 });
