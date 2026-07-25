@@ -42,6 +42,7 @@ async function main() {
   console.log(`Handle Gateway: ${gatewayUrl}`);
 
   const provider = new ethers.JsonRpcProvider(rpcUrl);
+
   const wallet = new ethers.Wallet(privateKey, provider);
   const relayerAddress = await wallet.getAddress();
   console.log(`Relayer Wallet Address: ${relayerAddress}`);

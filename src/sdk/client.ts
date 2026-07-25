@@ -192,7 +192,7 @@ export class ArcanaClient {
         if (retry === maxRetries) {
           throw new Error(`Failed to decrypt target address after ${maxRetries} retries: ${err.message || err}`);
         }
-        await new Promise((r) => setTimeout(r, 4000));
+        await new Promise((r) => setTimeout(r, 1000));
       }
     }
 
@@ -209,7 +209,7 @@ export class ArcanaClient {
           if (retry === maxRetries) {
             throw new Error(`Failed to decrypt calldata chunk handle at index ${index} after ${maxRetries} retries: ${err.message || err}`);
           }
-          await new Promise((r) => setTimeout(r, 4000));
+          await new Promise((r) => setTimeout(r, 1000));
         }
       }
       throw new Error(`Failed to decrypt chunk at index ${index}`);
