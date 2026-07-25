@@ -59,7 +59,7 @@ sequenceDiagram
 
 ---
 
-## Latency Metrics (Live Ethereum Sepolia Testnet)
+## Latency Metrics (Representative Live Ethereum Sepolia Testnet Run)
 
 ### 1. Minimal Swap Demo (72 bytes calldata, 2 chunks)
 *   **Client Price Encryption**: **5.03s** (EIP-712 credential signing & off-chain encryption).
@@ -67,8 +67,10 @@ sequenceDiagram
 *   **Relayer Decryption Latency**: **6.31s** (EIP-712 decryption verification & key retrieval).
 
 ### 2. Gnosis Safe Payout Demo (484 bytes calldata, 16 chunks)
-*   **Client Parameters Encryption**: **18.94s** (Encrypting trigger condition, target address, and 16 calldata chunks).
-*   **TEE Async Comparison Latency**: **12.04s** (TEE worker enclave execution on testnet).
+*   **Client Parameters Encryption**: **17.03s** (Encrypting trigger condition, target address, and 16 calldata chunks).
+*   **TEE Async Comparison Latency**: **7.07s** (TEE worker enclave execution on testnet).
+*   **Relayer Decryption Latency**: **12.26s** (Parallelized handle decryption & subgraph sync).
+
 ---
 
 ## Verified On-Chain Deployments & Live Sepolia Transactions
@@ -82,11 +84,11 @@ sequenceDiagram
 ### Live Sepolia Execution Pipeline Transactions
 * **Safe Proxy Deployment**: [`0xf981f814f9386715...`](https://sepolia.etherscan.io/tx/0xf981f814f93867154ef9e6a44b83755747f6617a230efc5205c6b66cbd6c1841)
 * **Safe Funding (0.005 ETH)**: [`0xbe54bc91b7ee562c...`](https://sepolia.etherscan.io/tx/0xbe54bc91b7ee562c7ed0ca19c7b9b6d3eca47137ea1b94c92468e2ffaf214c80)
-* **`submitIntent` (Safe Payout)**: [`0xdeac5438e579de06...`](https://sepolia.etherscan.io/tx/0xdeac5438e579de0607410bdc903850f87ebfbfe5fb8fad8df55924db4417fbb2)
-* **`requestTriggerCheck` (Keeper)**: [`0xe53fcdbe244ce210...`](https://sepolia.etherscan.io/tx/0xe53fcdbe244ce21064d8efc2a0022066666121ea4fc6182ffb7220802c2bbe34)
-* **`verifyTrigger` (TEE Verification)**: [`0xac1aa3e5b375500a...`](https://sepolia.etherscan.io/tx/0xac1aa3e5b375500aa77728c63eef1713e2499b74e3979d2a8aa24d7dd62d33aa)
-* **Gnosis Safe Payout Execution**: [`0xb7a2bad9cbd1fa8...`](https://sepolia.etherscan.io/tx/0xb7a2bad9cbd1fa8a80da9a36633e4ca6bbf82474408b5653facb5f95f63c3280)
-* **`markExecuted`**: [`0x762bcce93ddec60f...`](https://sepolia.etherscan.io/tx/0x762bcce93ddec60ffe2ed4fbb47fff2c7515be8b914efdd64ef00004fea48fe2)
+* **`submitIntent` (Safe Payout Intent #6)**: [`0x24ba88333ed75d18...`](https://sepolia.etherscan.io/tx/0x24ba88333ed75d18ed77cc3d9b73df7f8af4babad7ef118ab3f19e1c2d1fb8ee)
+* **`requestTriggerCheck` (Keeper)**: [`0xdcf71b31b609dd98...`](https://sepolia.etherscan.io/tx/0xdcf71b31b609dd9845bc2aff42cce1f0e64fbc36cd8ea20a93ef65db796ca421)
+* **`verifyTrigger` (TEE Verification)**: [`0x988ac3d2723de503...`](https://sepolia.etherscan.io/tx/0x988ac3d2723de503cf0e23a9f9e596d2d6f122b6a90b7deecdfab291c7adb52a)
+* **Gnosis Safe Payout Execution**: [`0xc9cea6400b61f92d...`](https://sepolia.etherscan.io/tx/0xc9cea6400b61f92dfb7006b052d5d046c428cfd2fcb3cbc41ec87134e863d481)
+* **`markExecuted`**: [`0xc577139bc6ee5427...`](https://sepolia.etherscan.io/tx/0xc577139bc6ee54272f6d8224076a9dd3ce2d8d98641c0b577db7ed751b95f40c)
 
 ---
 

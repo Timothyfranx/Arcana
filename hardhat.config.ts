@@ -25,7 +25,7 @@ export default defineConfig({
     },
     sepolia: {
       type: "http",
-      url: "https://ethereum-sepolia-rpc.publicnode.com",
+      url: process.env.SEPOLIA_RPC_URL || "https://gateway.tenderly.co/public/sepolia",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
   },
