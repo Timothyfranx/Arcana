@@ -7,6 +7,7 @@ export interface ArcanaClientOptions {
   noxComputeAddress: `0x${string}`;
   gatewayUrl?: `http://${string}` | `https://${string}`;
   subgraphUrl?: `http://${string}` | `https://${string}`;
+  retryDelayMs?: number;
 }
 
 const INTENT_RELAY_ABI = [
@@ -180,6 +181,7 @@ export class ArcanaClient {
   }> {
     const handleClient = await this.getHandleClient();
     const intent = await this.intentRelayContract.intents(intentId);
+    const retryDelay = this.options.retryDelayMs ?? 4000;
 
     let targetAddress = "";
     // Decrypt target address with retry loop for subgraph synchronization
@@ -192,7 +194,7 @@ export class ArcanaClient {
         if (retry === maxRetries) {
           throw new Error(`Failed to decrypt target address after ${maxRetries} retries: ${err.message || err}`);
         }
-        await new Promise((r) => setTimeout(r, 1000));
+        await new Promise((r) => setTimeout(r, retryDelay));
       }
     }
 
@@ -209,7 +211,7 @@ export class ArcanaClient {
           if (retry === maxRetries) {
             throw new Error(`Failed to decrypt calldata chunk handle at index ${index} after ${maxRetries} retries: ${err.message || err}`);
           }
-          await new Promise((r) => setTimeout(r, 1000));
+          await new Promise((r) => setTimeout(r, retryDelay));
         }
       }
       throw new Error(`Failed to decrypt chunk at index ${index}`);

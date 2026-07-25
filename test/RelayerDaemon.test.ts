@@ -16,8 +16,8 @@ function chunkCalldata(calldataHex: string): bigint[] {
   return chunks;
 }
 
-describe("Relayer Daemon Integration Test", function () {
-  it("Should automatically pick up a triggered intent, decrypt handles, and execute them", async function () {
+describe("Relayer Execution Payload & Decryption Test", function () {
+  it("Should decrypt execution payload and execute target transaction", async function () {
     const connection = await network.getOrCreate("noxLocal");
     const { ethers } = connection;
     const [user, relayer, keeper] = await ethers.getSigners();
