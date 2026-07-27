@@ -18,7 +18,8 @@ const INTENT_RELAY_ABI = [
   "function verifyTrigger(uint256 intentId, bytes calldata decryptionProof) external",
   "function markExecuted(uint256 intentId) external",
   "function intents(uint256) view returns (address owner, bytes32 triggerConditionHandle, uint8 compareOp, bytes32 targetHandle, uint256 calldataLength, uint8 status, bytes32 activeCheckHandle)",
-  "function getCalldataHandles(uint256) view returns (bytes32[] memory)"
+  "function getCalldataHandles(uint256) view returns (bytes32[] memory)",
+  "function getOwnerIntents(address owner) view returns (uint256[] memory)"
 ];
 
 export class ArcanaClient {

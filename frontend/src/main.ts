@@ -48,6 +48,44 @@ selectProtocol.addEventListener("change", () => {
   }
 });
 
+const SEPOLIA_CHAIN_ID_HEX = "0xaa36a7";
+
+// Shared network switch helper
+async function switchNetwork(): Promise<boolean> {
+  if (!(window as any).ethereum) return false;
+  try {
+    await (window as any).ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: SEPOLIA_CHAIN_ID_HEX }],
+    });
+    await checkNetwork();
+    return true;
+  } catch (switchError: any) {
+    if (switchError.code === 4902) {
+      alert("Please add the Sepolia test network to MetaMask, then reconnect.");
+    } else {
+      alert("Please switch MetaMask to the Sepolia test network to use Arcana.");
+    }
+    return false;
+  }
+}
+
+// Network check & warning banner toggle
+async function checkNetwork() {
+  const banner = document.getElementById("network-banner");
+  if (!banner || !(window as any).ethereum) return;
+  try {
+    const currentChainId = await (window as any).ethereum.request({ method: "eth_chainId" });
+    if (currentChainId !== SEPOLIA_CHAIN_ID_HEX) {
+      banner.style.display = "flex";
+    } else {
+      banner.style.display = "none";
+    }
+  } catch {
+    banner.style.display = "none";
+  }
+}
+
 // Connect Wallet handler
 async function connectWallet() {
   if (!(window as any).ethereum) {
@@ -63,6 +101,17 @@ async function connectWallet() {
     const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
     userAddress = accounts[0];
     
+    // Enforce Sepolia test network
+    const currentChainId = await (window as any).ethereum.request({ method: "eth_chainId" });
+    if (currentChainId !== SEPOLIA_CHAIN_ID_HEX) {
+      const switched = await switchNetwork();
+      if (!switched) {
+        btnConnect.disabled = false;
+        btnConnect.innerText = "Connect Wallet";
+        return;
+      }
+    }
+
     // Setup provider and signer
     provider = new ethers.BrowserProvider((window as any).ethereum);
     signer = await provider.getSigner();
@@ -241,3 +290,18 @@ async function submitIntent() {
 btnConnect.addEventListener("click", connectWallet);
 btnRefresh.addEventListener("click", loadIntents);
 btnSubmit.addEventListener("click", submitIntent);
+
+const btnSwitchNetwork = document.getElementById("btn-switch-network");
+if (btnSwitchNetwork) {
+  btnSwitchNetwork.addEventListener("click", switchNetwork);
+}
+
+if ((window as any).ethereum?.on) {
+  (window as any).ethereum.on("chainChanged", async () => {
+    await checkNetwork();
+    window.location.reload();
+  });
+}
+
+// Initial network check on page load
+checkNetwork();

@@ -29,6 +29,37 @@ body {
   box-sizing: border-box;
 }
 
+/* Network Warning Banner */
+.network-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #451a03;
+  color: #fef3c7;
+  border: 1px solid #d97706;
+  border-radius: 8px;
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.network-banner button {
+  background-color: #d97706;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.network-banner button:hover {
+  background-color: #b45309;
+}
+
 /* Header styling */
 .app-header {
   display: flex;
