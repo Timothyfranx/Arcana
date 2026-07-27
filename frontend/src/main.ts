@@ -3,7 +3,7 @@ import { ArcanaClient, ProtocolAdapter } from "../../src/sdk/index.js";
 import "./style.css";
 
 // Ethereum Sepolia Configuration
-const INTENT_RELAY_ADDRESS = "0x33Bc5b4b393653857Dd9c34987187Da695568Ef7";
+const INTENT_RELAY_ADDRESS = "0xc67C9e9b8b3E1191D2Ce3f097644bf6F2649545D";
 const NOX_COMPUTE_ADDRESS = "0x24ef36ec5b626d7dcd09a98f3083c2758f0f77bf";
 const GATEWAY_URL = "https://gateway-testnets.noxprotocol.dev";
 const SUBGRAPH_URL = "https://thegraph.ethereum-sepolia-testnet.noxprotocol.io/api/subgraphs/id/9CsccKwvgYFo72zZeU4k4wj2NEBLdWhVE3EUandgmzgo";

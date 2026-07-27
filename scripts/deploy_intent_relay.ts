@@ -13,9 +13,9 @@ async function main() {
   
   // Two separate addresses for relayer and price oracle roles
   // Oracle: Deployer Wallet (0xBDB82a3905a3B22B32885Bad996cbc9917436534)
-  // Relayer: Separate Dedicated Relayer Wallet (0x70997970C51812dc3A010C7d01b50e0d17dc79C8)
+  // Relayer: Fresh Dedicated Wallet (0x2A331463eff2603e39748B30f2b52820d160B5eA)
   const priceOracleAddress = deployerAddress;
-  const relayerAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+  const relayerAddress = "0x2A331463eff2603e39748B30f2b52820d160B5eA";
 
   console.log("=== Deploying Fresh IntentRelay Contract to Ethereum Sepolia ===");
   console.log(`Deployer Wallet: ${deployerAddress}`);

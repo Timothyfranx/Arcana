@@ -95,16 +95,12 @@ Validated by `npx hardhat test` against the local `noxLocal` simulated TEE stack
 Validated on public Ethereum Sepolia testnet with off-chain Keeper and Relayer daemons running continuously:
 
 #### Active Smart Contracts (Current Live Deployment)
-* **[`IntentRelay.sol`](https://sepolia.etherscan.io/address/0x33Bc5b4b393653857Dd9c34987187Da695568Ef7#code)**: Deployed & Verified at `0x33Bc5b4b393653857Dd9c34987187Da695568Ef7` (Deployment Tx: [`0x17b8a6b8...`](https://sepolia.etherscan.io/tx/0x17b8a6b8e9399afe36aa0217683acc31924ba0eb38796e99749a77ac71cd1f78)).
-* **Separate Relayer Role**: Dedicated Relayer Wallet `0x70997970C51812dc3A010C7d01b50e0d17dc79C8`.
-* **Separate Oracle Role**: Dedicated Price Oracle Wallet `0xBDB82a3905a3B22B32885Bad996cbc9917436534`.
+* **[`IntentRelay.sol`](https://sepolia.etherscan.io/address/0xc67C9e9b8b3E1191D2Ce3f097644bf6F2649545D#code)**: Deployed & Verified at `0xc67C9e9b8b3E1191D2Ce3f097644bf6F2649545D` (Deployment Tx: [`0x30a83da0...`](https://sepolia.etherscan.io/tx/0x30a83da02ed1938366be816612347cbacff6ba9d411d87a2e406641af3d4b9c6)).
+* **Dedicated Relayer Role**: Dedicated Random Relayer Key `0x2A331463eff2603e39748B30f2b52820d160B5eA` (Not a public test key).
+* **Dedicated Oracle Role**: Dedicated Price Oracle Wallet `0xBDB82a3905a3B22B32885Bad996cbc9917436534`.
 * **Gnosis Safe Singleton (v1.3.0)**: Canonical Master Copy on Sepolia at `0x69f4d1788e39c87893c980c06edf4b7f686e2938`.
 * **Gnosis Safe Proxy**: Safe Proxy Instance at `0xC40ec2fD95830F37D5744489018693031c8AC6eE`.
 * **Chainlink Price Feed**: Official Sepolia ETH/USD Aggregator at `0x694AA1769357215DE4FAC081bf1f309aDC325306`.
-
-#### Live Execution Pipeline Transactions (Current Contract `0x33Bc...8Ef7`)
-* **`submitIntent` (Safe Payout Intent #0)**: [`0xc6110aff687cdccf...`](https://sepolia.etherscan.io/tx/0xc6110aff687cdccf5016ee79e54415f9bf0b535dd09df0725b5ffd9b30c9b08e)
-* **`requestTriggerCheck` (Keeper)**: [`0x7282c8af6a991ab5...`](https://sepolia.etherscan.io/tx/0x7282c8af6a991ab547541c4da8f6e2c65e4358bf90a27fea9529e8be1a055bb7)
 
 #### Superseded Deployment (Prior to owner-indexing + multi-condition features)
 Historical verification data for earlier contract version (`0x9BF3f5db0442a59A074B728cD23F719D57375A9b`):

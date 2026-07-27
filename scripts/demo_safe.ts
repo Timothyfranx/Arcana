@@ -24,7 +24,7 @@ async function main() {
   const [wallet] = await ethers.getSigners();
   const walletAddress = await wallet.getAddress();
 
-  const intentRelayAddress = "0x33Bc5b4b393653857Dd9c34987187Da695568Ef7";
+  const intentRelayAddress = "0xc67C9e9b8b3E1191D2Ce3f097644bf6F2649545D";
   const noxComputeAddress = "0x24ef36ec5b626d7dcd09a98f3083c2758f0f77bf";
   const gatewayUrl = "https://gateway-testnets.noxprotocol.dev";
   const subgraphUrl = "https://thegraph.ethereum-sepolia-testnet.noxprotocol.io/api/subgraphs/id/9CsccKwvgYFo72zZeU4k4wj2NEBLdWhVE3EUandgmzgo";
