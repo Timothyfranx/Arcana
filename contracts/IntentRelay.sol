@@ -193,6 +193,7 @@ contract IntentRelay {
         if (intent.logicOp != LogicOp.NONE) revert InvalidLogicOp();
 
         INoxCompute(noxCompute).validateInputProof(currentValueHandle, currentValueOwner, currentValueProof, TEEType.Uint256);
+        INoxCompute(noxCompute).allow(currentValueHandle, address(this));
 
         bytes32 resultHandle = _evaluateOp(currentValueHandle, intent.triggerConditionHandle, intent.compareOp);
 
@@ -220,6 +221,9 @@ contract IntentRelay {
 
         INoxCompute(noxCompute).validateInputProof(currentValueHandle1, owner1, proof1, TEEType.Uint256);
         INoxCompute(noxCompute).validateInputProof(currentValueHandle2, owner2, proof2, TEEType.Uint256);
+
+        INoxCompute(noxCompute).allow(currentValueHandle1, address(this));
+        INoxCompute(noxCompute).allow(currentValueHandle2, address(this));
 
         bytes32 b1 = _evaluateOp(currentValueHandle1, intent.triggerConditionHandle, intent.compareOp);
         bytes32 b2 = _evaluateOp(currentValueHandle2, intent.triggerConditionHandle2, intent.compareOp2);

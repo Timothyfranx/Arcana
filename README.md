@@ -73,20 +73,46 @@ sequenceDiagram
 
 ---
 
-## Verified On-Chain Deployments & Live Sepolia Transactions
+## Verified Evidence & Deployments
 
-### Smart Contracts
-* **[`IntentRelay.sol`](https://eth-sepolia.blockscout.com/address/0x9BF3f5db0442a59A074B728cD23F719D57375A9b#code)**: Deployed & Verified on Blockscout / Sourcify at `0x9BF3f5db0442a59A074B728cD23F719D57375A9b`.
-* **Gnosis Safe Singleton (v1.3.0)**: Official Canonical Safe Master Copy on Sepolia at `0x69f4d1788e39c87893c980c06edf4b7f686e2938`.
-* **Gnosis Safe Proxy**: Deployed Safe Proxy instance at `0xC40ec2fD95830F37D5744489018693031c8AC6eE`.
+### 5a. Local Integration Test Evidence
+Validated by `npx hardhat test` against the local `noxLocal` simulated TEE stack. This verifies full contract logic, boolean composition, owner indexing, and stop-loss handling in a fast, reproducible, zero-cost environment (does not by itself prove live network behavior):
+
+- **Suite 1: IntentRelay Integration Test**
+  - `Should execute a full confidential intent lifecycle: submit -> trigger -> decrypt -> execute`
+- **Suite 2: Keeper Loop and Relayer Integration Test**
+  - `Should evaluate price checks, fail when mock price is below trigger, and execute automatically when mock price is met`
+  - `Should revert if markExecuted is called by an unauthorized non-relayer account`
+  - `Should evaluate multi-condition composed encrypted triggers (AND) inside TEE enclaves on-chain`
+  - `Should index intent IDs per owner and return via getOwnerIntents`
+  - `Should evaluate Stop-Loss triggers using CompareOp.LE`
+- **Suite 3: Relayer Execution Payload & Decryption Test**
+  - `Should decrypt execution payload and execute target transaction`
+- **Suite 4: Nox Round Trip Test**
+  - `Should encrypt, register on-chain, and decrypt a uint256 value`
+
+### 5b. Live Hosted Deployment (Sepolia + Vercel + Railway)
+Validated on public Ethereum Sepolia testnet with off-chain Keeper and Relayer daemons running continuously:
+
+#### Active Smart Contracts (Current Live Deployment)
+* **[`IntentRelay.sol`](https://sepolia.etherscan.io/address/0x33Bc5b4b393653857Dd9c34987187Da695568Ef7#code)**: Deployed & Verified at `0x33Bc5b4b393653857Dd9c34987187Da695568Ef7` (Deployment Tx: [`0x17b8a6b8...`](https://sepolia.etherscan.io/tx/0x17b8a6b8e9399afe36aa0217683acc31924ba0eb38796e99749a77ac71cd1f78)).
+* **Separate Relayer Role**: Dedicated Relayer Wallet `0x70997970C51812dc3A010C7d01b50e0d17dc79C8`.
+* **Separate Oracle Role**: Dedicated Price Oracle Wallet `0xBDB82a3905a3B22B32885Bad996cbc9917436534`.
+* **Gnosis Safe Singleton (v1.3.0)**: Canonical Master Copy on Sepolia at `0x69f4d1788e39c87893c980c06edf4b7f686e2938`.
+* **Gnosis Safe Proxy**: Safe Proxy Instance at `0xC40ec2fD95830F37D5744489018693031c8AC6eE`.
 * **Chainlink Price Feed**: Official Sepolia ETH/USD Aggregator at `0x694AA1769357215DE4FAC081bf1f309aDC325306`.
 
-### Live Sepolia Execution Pipeline Transactions
+#### Live Execution Pipeline Transactions (Current Contract `0x33Bc...8Ef7`)
+* **`submitIntent` (Safe Payout Intent #0)**: [`0xc6110aff687cdccf...`](https://sepolia.etherscan.io/tx/0xc6110aff687cdccf5016ee79e54415f9bf0b535dd09df0725b5ffd9b30c9b08e)
+* **`requestTriggerCheck` (Keeper)**: [`0x7282c8af6a991ab5...`](https://sepolia.etherscan.io/tx/0x7282c8af6a991ab547541c4da8f6e2c65e4358bf90a27fea9529e8be1a055bb7)
+
+#### Superseded Deployment (Prior to owner-indexing + multi-condition features)
+Historical verification data for earlier contract version (`0x9BF3f5db0442a59A074B728cD23F719D57375A9b`):
 * **Safe Proxy Deployment**: [`0xf981f814f9386715...`](https://sepolia.etherscan.io/tx/0xf981f814f93867154ef9e6a44b83755747f6617a230efc5205c6b66cbd6c1841)
 * **Safe Funding (0.005 ETH)**: [`0xbe54bc91b7ee562c...`](https://sepolia.etherscan.io/tx/0xbe54bc91b7ee562c7ed0ca19c7b9b6d3eca47137ea1b94c92468e2ffaf214c80)
-* **`submitIntent` (Safe Payout Intent #6)**: [`0x24ba88333ed75d18...`](https://sepolia.etherscan.io/tx/0x24ba88333ed75d18ed77cc3d9b73df7f8af4babad7ef118ab3f19e1c2d1fb8ee)
-* **`requestTriggerCheck` (Keeper)**: [`0xdcf71b31b609dd98...`](https://sepolia.etherscan.io/tx/0xdcf71b31b609dd9845bc2aff42cce1f0e64fbc36cd8ea20a93ef65db796ca421)
-* **`verifyTrigger` (TEE Verification)**: [`0x988ac3d2723de503...`](https://sepolia.etherscan.io/tx/0x988ac3d2723de503cf0e23a9f9e596d2d6f122b6a90b7deecdfab291c7adb52a)
+* **`submitIntent`**: [`0x24ba88333ed75d18...`](https://sepolia.etherscan.io/tx/0x24ba88333ed75d18ed77cc3d9b73df7f8af4babad7ef118ab3f19e1c2d1fb8ee)
+* **`requestTriggerCheck`**: [`0xdcf71b31b609dd98...`](https://sepolia.etherscan.io/tx/0xdcf71b31b609dd9845bc2aff42cce1f0e64fbc36cd8ea20a93ef65db796ca421)
+* **`verifyTrigger`**: [`0x988ac3d2723de503...`](https://sepolia.etherscan.io/tx/0x988ac3d2723de503cf0e23a9f9e596d2d6f122b6a90b7deecdfab291c7adb52a)
 * **Gnosis Safe Payout Execution**: [`0xc9cea6400b61f92d...`](https://sepolia.etherscan.io/tx/0xc9cea6400b61f92dfb7006b052d5d046c428cfd2fcb3cbc41ec87134e863d481)
 * **`markExecuted`**: [`0xc577139bc6ee5427...`](https://sepolia.etherscan.io/tx/0xc577139bc6ee54272f6d8224076a9dd3ce2d8d98641c0b577db7ed751b95f40c)
 
