@@ -113,11 +113,10 @@ npx hardhat test
 ```
 
 ### 4. Running the Web Frontend Dashboard
-Scaffolded under the `frontend` folder. To run locally:
+Scaffolded as an npm workspace under the `frontend` folder. To run locally from the repository root:
 ```bash
-cd frontend
 npm install
-npm run dev
+npm run dev -w frontend
 ```
 
 ### 5. Running the Gnosis Safe Sepolia Demo

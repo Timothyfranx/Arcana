@@ -1,6 +1,10 @@
 {
   "name": "arcana",
   "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
   "description": "",
   "main": "index.js",
   "scripts": {
