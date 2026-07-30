@@ -156,7 +156,7 @@ export class ArcanaClient {
       } catch {
         // Retry
       }
-      await new Promise((r) => setTimeout(r, 2000));
+      await new Promise((r) => setTimeout(r, 500));
     }
     throw new Error(`Timeout waiting for TEE computation decryption proof for check ${activeCheckHandle}`);
   }

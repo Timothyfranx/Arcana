@@ -11,7 +11,7 @@ async function main() {
   const noxComputeAddress = process.env.NOX_COMPUTE_ADDRESS;
   const gatewayUrl = process.env.GATEWAY_URL || (process.env.NOX_HANDLE_GATEWAY_HOST_PORT ? `http://127.0.0.1:${process.env.NOX_HANDLE_GATEWAY_HOST_PORT}` : undefined);
   const subgraphUrl = process.env.SUBGRAPH_URL;
-  const pollInterval = Number(process.env.POLL_INTERVAL_MS || "15000");
+  const pollInterval = Number(process.env.POLL_INTERVAL_MS || "3000");
 
   if (!privateKey) {
     console.error("Error: KEEPER_PRIVATE_KEY environment variable is required.");

@@ -148,7 +148,7 @@ async function main() {
     }
   };
 
-  setInterval(pollTriggerEvents, 5000);
+  setInterval(pollTriggerEvents, 2000);
   await pollTriggerEvents();
 
   // Keep process alive
