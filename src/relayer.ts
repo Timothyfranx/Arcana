@@ -63,13 +63,66 @@ async function main() {
     subgraphUrl
   });
 
-  console.log("Listening for IntentTriggered events via stateless polling...");
+  console.log("Listening for IntentTriggered events via stateless polling & startup scan...");
 
   const processedIntents = new Set<string>();
   let lastCheckedBlock = await provider.getBlockNumber();
 
+  const processExecution = async (intentId: bigint) => {
+    const intentKey = intentId.toString();
+    if (processedIntents.has(intentKey)) return;
+    processedIntents.add(intentKey);
+
+    try {
+      console.log(`\n[Relayer] Processing execution for Intent ID ${intentId}...`);
+      console.log(`Fetching and decrypting confidential payload for intent ID ${intentId}...`);
+      const { targetAddress: decryptedTargetAddress, calldata: rebuiltCalldata } = 
+        await client.decryptExecutionPayload(intentId);
+
+      console.log(`Decrypted target address: ${decryptedTargetAddress.slice(0, 6)}...${decryptedTargetAddress.slice(-4)}`);
+      console.log(`Reassembled calldata: [redacted for confidentiality, length: ${rebuiltCalldata.length - 2} hex chars]`);
+
+      console.log(`Submitting execution transaction to target: ${decryptedTargetAddress.slice(0, 6)}...${decryptedTargetAddress.slice(-4)}...`);
+      const nonce1 = await provider.getTransactionCount(relayerAddress, "pending");
+      const executionTx = await dispatchWallet.sendTransaction({
+        to: decryptedTargetAddress,
+        data: rebuiltCalldata,
+        nonce: nonce1,
+      });
+      console.log(`Transaction sent: ${executionTx.hash}. Waiting for confirmation...`);
+      const receipt = await executionTx.wait();
+      console.log(`Transaction confirmed in block ${receipt!.blockNumber}!`);
+
+      console.log(`Calling markExecuted for intent ID ${intentId} on-chain...`);
+      const nonce2 = await provider.getTransactionCount(relayerAddress, "pending");
+      const markTx = await client.markExecuted(intentId, nonce2);
+      console.log(`Mark transaction sent: ${markTx.hash}. Waiting for confirmation...`);
+      await markTx.wait();
+      console.log(`Intent ID ${intentId} marked as Executed successfully!`);
+
+    } catch (err: any) {
+      console.error(`Error processing trigger for intent ID ${intentId}:`, err.message || err);
+    }
+  };
+
+  const scanTriggeredIntents = async () => {
+    try {
+      const nextId = await client.intentRelayContract.nextIntentId();
+      for (let id = 0n; id < nextId; id++) {
+        const intent = await client.intentRelayContract.intents(id);
+        if (Number(intent.status) === 1) { // Status.Triggered
+          await processExecution(id);
+        }
+      }
+    } catch (err: any) {
+      console.error("Error scanning triggered intents:", err.message || err);
+    }
+  };
+
   const pollTriggerEvents = async () => {
     try {
+      await scanTriggeredIntents();
+
       const currentBlock = await provider.getBlockNumber();
       if (currentBlock < lastCheckedBlock) return;
 
@@ -79,46 +132,7 @@ async function main() {
       for (const event of events) {
         const log = event as any;
         const intentId: bigint = log.args[0];
-        const intentKey = intentId.toString();
-
-        if (processedIntents.has(intentKey)) continue;
-        processedIntents.add(intentKey);
-
-        const txHash = log.transactionHash;
-        console.log(`\n[Event] IntentTriggered detected: Intent ID ${intentId} (Tx: ${txHash})`);
-
-        try {
-          // 1. Fetch, decrypt, and reassemble execution payload using SDK Client
-          console.log(`Fetching and decrypting confidential payload for intent ID ${intentId}...`);
-          const { targetAddress: decryptedTargetAddress, calldata: rebuiltCalldata } = 
-            await client.decryptExecutionPayload(intentId);
-
-          console.log(`Decrypted target address: ${decryptedTargetAddress.slice(0, 6)}...${decryptedTargetAddress.slice(-4)}`);
-          console.log(`Reassembled calldata: [redacted for confidentiality, length: ${rebuiltCalldata.length - 2} hex chars]`);
-
-          // 2. Forward transaction to the target protocol (via private RPC if configured)
-          console.log(`Submitting execution transaction to target: ${decryptedTargetAddress.slice(0, 6)}...${decryptedTargetAddress.slice(-4)}...`);
-          const nonce1 = await provider.getTransactionCount(relayerAddress, "pending");
-          const executionTx = await dispatchWallet.sendTransaction({
-            to: decryptedTargetAddress,
-            data: rebuiltCalldata,
-            nonce: nonce1,
-          });
-          console.log(`Transaction sent: ${executionTx.hash}. Waiting for confirmation...`);
-          const receipt = await executionTx.wait();
-          console.log(`Transaction confirmed in block ${receipt!.blockNumber}!`);
-
-          // 3. Mark intent as executed on-chain using SDK Client
-          console.log(`Calling markExecuted for intent ID ${intentId} on-chain...`);
-          const nonce2 = await provider.getTransactionCount(relayerAddress, "pending");
-          const markTx = await client.markExecuted(intentId, nonce2);
-          console.log(`Mark transaction sent: ${markTx.hash}. Waiting for confirmation...`);
-          await markTx.wait();
-          console.log(`Intent ID ${intentId} marked as Executed successfully!`);
-
-        } catch (err: any) {
-          console.error(`Error processing trigger for intent ID ${intentId}:`, err.message || err);
-        }
+        await processExecution(intentId);
       }
 
       lastCheckedBlock = currentBlock + 1;
