@@ -95,7 +95,7 @@ Validated by `npx hardhat test` against the local `noxLocal` simulated TEE stack
 Validated on public Ethereum Sepolia testnet with off-chain Keeper and Relayer daemons running continuously:
 
 #### Active Smart Contracts (Current Live Deployment)
-* **[`IntentRelay.sol`](https://sepolia.etherscan.io/address/0xc67C9e9b8b3E1191D2Ce3f097644bf6F2649545D#code)**: Deployed & Verified at `0xc67C9e9b8b3E1191D2Ce3f097644bf6F2649545D` (Deployment Tx: [`0x30a83da0...`](https://sepolia.etherscan.io/tx/0x30a83da02ed1938366be816612347cbacff6ba9d411d87a2e406641af3d4b9c6)).
+* **[`IntentRelay.sol`](https://sepolia.etherscan.io/address/0x1660Ec223985a50b2560F0E7C8cab82097c9522a#code)**: Deployed & Verified at `0x1660Ec223985a50b2560F0E7C8cab82097c9522a` (Deployment Tx: [`0xbdaa272f...`](https://sepolia.etherscan.io/tx/0xbdaa272f9da716d9c5ca12d15113ca0fbebafc43ba7336301e464c961a372765)).
 * **Dedicated Relayer Role**: Dedicated Random Relayer Key `0x2A331463eff2603e39748B30f2b52820d160B5eA` (Not a public test key).
 * **Dedicated Oracle Role**: Dedicated Price Oracle Wallet `0xBDB82a3905a3B22B32885Bad996cbc9917436534`.
 * **Gnosis Safe Singleton (v1.3.0)**: Canonical Master Copy on Sepolia at `0x69f4d1788e39c87893c980c06edf4b7f686e2938`.
