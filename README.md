@@ -166,11 +166,22 @@ npx hardhat run scripts/demo_safe.ts --network sepolia
 
 ---
 
-## Design Choices & Tradeoffs
+## Technical Retrospective & Acknowledgements
 
-1. **Whitelisted Price Oracles**: Gated `requestTriggerCheck` to prevent arbitrary price manipulation. Gated by a whitelisted `priceOracle` address.
-2. **Parallelized Decryption**: Safe execution calldata is split into multiple 32-byte chunks. The SDK decrypts all chunks concurrently in parallel (`Promise.all`) once the subgraph indexes the permission change, eliminating linear network latency.
-3. **Calldata Chunking**: Because the current Nox JS SDK only supports encrypting 32-byte numeric types (`uint256`), generic swap/multisig calldata of arbitrary length is padded, divided into 32-byte chunks, and encrypted client-side. The relayer decrypts these chunks off-chain and trims the padding dynamically using the on-chain stored `calldataLength`.
+### Technical Retrospective & Debugging Trajectory
+
+During live Sepolia testnet deployment, we resolved several real-world distributed system challenges:
+
+1. **SDK ABI Struct Synchronization**: When multi-condition logic (`triggerConditionHandle2`, `compareOp2`, `logicOp`) was introduced to `IntentRelay.sol`, the hand-crafted `INTENT_RELAY_ABI` in `src/sdk/client.ts` was updated to match Solidity's exact tuple return order. This resolved a subtle positional decoding shift where `targetHandle` was mistakenly read as `activeCheckHandle`.
+2. **ACL Handle Permission Pipeline**: Confirmed that explicitly invoking `INoxCompute(noxCompute).allow(resultHandle, address(this))` before `allowPublicDecryption` ensures persistent administrative rights on TEE computation output handles before granting public unwrap permissions.
+3. **Resilient Off-Chain Daemons**:
+   - **Stateless Log Polling**: Replaced stateful `contract.on` filters with `queryFilter` block polling to eliminate public RPC filter expiration timeouts (`eth_getFilterChanges` `filter not found`).
+   - **Sequential Nonce Management**: Configured pending nonce tracking (`getTransactionCount(..., "pending")`) in `keeper.ts` to prevent transaction replacement underpriced collisions when processing multiple intent checks in a single loop pass.
+   - **Dual-Mode State Scanning**: Added automated state scanning to `relayer.ts` so past `Triggered` intents are automatically caught, decrypted, executed, and marked as `Executed` on-chain regardless of daemon restart timing.
+
+### Special Acknowledgements
+
+Heartfelt thanks to the **Nox / iExec core engineering team and developer community**! Their incredible technical clarity, prompt support on handle attribute internals (`ATTR_IS_UNIQUE`), and deep insights into TEE ACL permission semantics were instrumental in successfully bringing Arcana to life on public Ethereum Sepolia testnet.
 
 ---
 
