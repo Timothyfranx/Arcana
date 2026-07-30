@@ -197,6 +197,7 @@ contract IntentRelay {
 
         bytes32 resultHandle = _evaluateOp(currentValueHandle, intent.triggerConditionHandle, intent.compareOp);
 
+        INoxCompute(noxCompute).allow(resultHandle, address(this));
         INoxCompute(noxCompute).allowPublicDecryption(resultHandle);
         intent.activeCheckHandle = resultHandle;
 
@@ -248,6 +249,7 @@ contract IntentRelay {
             compositeResult = b1;
         }
 
+        INoxCompute(noxCompute).allow(compositeResult, address(this));
         INoxCompute(noxCompute).allowPublicDecryption(compositeResult);
         intent.activeCheckHandle = compositeResult;
 

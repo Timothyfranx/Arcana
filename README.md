@@ -102,6 +102,13 @@ Validated on public Ethereum Sepolia testnet with off-chain Keeper and Relayer d
 * **Gnosis Safe Proxy**: Safe Proxy Instance at `0xC40ec2fD95830F37D5744489018693031c8AC6eE`.
 * **Chainlink Price Feed**: Official Sepolia ETH/USD Aggregator at `0x694AA1769357215DE4FAC081bf1f309aDC325306`.
 
+#### Live On-Chain Execution Evidence (Full End-to-End Loop Verified)
+* **`submitIntent`**: [`0xb7abee4d2f468ec...`](https://sepolia.etherscan.io/tx/0xb7abee4d2f468ec1d441f591295b408342c6eabbfd92dace0454b61302889c68)
+* **`requestTriggerCheck`**: [`0x26906f0a8c03932...`](https://sepolia.etherscan.io/tx/0x26906f0a8c03932995d3925c14e3fe2b15bf32080939fe41775f665897aa648d)
+* **`verifyTrigger` (TEE Proof Verified)**: [`0x157fb4d538b178d...`](https://sepolia.etherscan.io/tx/0x157fb4d538b178d3286a28618184b2ae5a6b158c6008f334769880a3cbe881d9)
+* **Gnosis Safe Payout Execution**: [`0xda698f49a0a7582...`](https://sepolia.etherscan.io/tx/0xda698f49a0a75826f13f4b2804dfb604cb6910ab5ab48ba399cd870cb16abb95)
+* **`markExecuted`**: [`0xef127138609c2ec...`](https://sepolia.etherscan.io/tx/0xef127138609c2ec6e8ab746163c5a8df05bd7adab2c3f1f81e1b6348bbc033fd)
+
 #### Superseded Deployment (Prior to owner-indexing + multi-condition features)
 Historical verification data for earlier contract version (`0x9BF3f5db0442a59A074B728cD23F719D57375A9b`):
 * **Safe Proxy Deployment**: [`0xf981f814f9386715...`](https://sepolia.etherscan.io/tx/0xf981f814f93867154ef9e6a44b83755747f6617a230efc5205c6b66cbd6c1841)
