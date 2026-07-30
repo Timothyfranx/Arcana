@@ -200,30 +200,37 @@ export class ArcanaClient {
     }
 
     const calldataHandles = await this.intentRelayContract.getCalldataHandles(intentId);
+    const decryptedChunks: { index: number; value: bigint }[] = [];
     
-    // Once the target handle successfully decrypts, the subgraph is verified synced.
-    // We can decrypt all remaining calldata chunks concurrently in parallel.
-    const decryptPromises = calldataHandles.map(async (handle: string, index: number) => {
-      for (let retry = 1; retry <= maxRetries; retry++) {
-        try {
-          const chunkDecryption = await handleClient.decrypt(handle);
-          return { index, value: chunkDecryption.value as bigint };
-        } catch (err: any) {
-          if (retry === maxRetries) {
-            throw new Error(`Failed to decrypt calldata chunk handle at index ${index} after ${maxRetries} retries: ${err.message || err}`);
+    // Decrypt calldata chunks in batches of 4 to prevent RPC rate limiting
+    const batchSize = 4;
+    for (let i = 0; i < calldataHandles.length; i += batchSize) {
+      const batch = calldataHandles.slice(i, i + batchSize);
+      const batchResults = await Promise.all(
+        batch.map(async (handle: string, batchIdx: number) => {
+          const index = i + batchIdx;
+          for (let retry = 1; retry <= maxRetries; retry++) {
+            try {
+              const chunkDecryption = await handleClient.decrypt(handle);
+              return { index, value: chunkDecryption.value as bigint };
+            } catch (err: any) {
+              if (retry === maxRetries) {
+                throw new Error(`Failed to decrypt calldata chunk handle at index ${index} after ${maxRetries} retries: ${err.message || err}`);
+              }
+              await new Promise((r) => setTimeout(r, retryDelay * retry));
+            }
           }
-          await new Promise((r) => setTimeout(r, retryDelay));
-        }
-      }
-      throw new Error(`Failed to decrypt chunk at index ${index}`);
-    });
+          throw new Error(`Failed to decrypt chunk at index ${index}`);
+        })
+      );
+      decryptedChunks.push(...batchResults);
+    }
 
-    const results = await Promise.all(decryptPromises);
-    // Sort results by index to ensure chunks are reconstructed in correct order
-    results.sort((a, b) => a.index - b.index);
-    const decryptedChunks = results.map((r) => r.value);
+    // Sort decrypted chunks by index to ensure chunks are reconstructed in correct order
+    decryptedChunks.sort((a, b) => a.index - b.index);
+    const chunkValues = decryptedChunks.map((r) => r.value);
 
-    const calldata = rebuildCalldata(decryptedChunks, Number(intent.calldataLength));
+    const calldata = rebuildCalldata(chunkValues, Number(intent.calldataLength));
     return { targetAddress, calldata };
   }
 
