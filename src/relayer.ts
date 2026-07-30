@@ -63,18 +63,19 @@ async function main() {
     subgraphUrl
   });
 
-  console.log("Listening for IntentTriggered events via stateless polling & startup scan...");
+  console.log("Listening for IntentTriggered events & scanning on-chain Triggered intents...");
 
   const processedIntents = new Set<string>();
   let lastCheckedBlock = await provider.getBlockNumber();
 
-  const processExecution = async (intentId: bigint) => {
+  const processSingleIntent = async (intentId: bigint) => {
     const intentKey = intentId.toString();
     if (processedIntents.has(intentKey)) return;
     processedIntents.add(intentKey);
 
+    console.log(`\n[Relayer] Processing Triggered Intent ID ${intentId}...`);
     try {
-      console.log(`\n[Relayer] Processing execution for Intent ID ${intentId}...`);
+      // 1. Fetch, decrypt, and reassemble execution payload using SDK Client
       console.log(`Fetching and decrypting confidential payload for intent ID ${intentId}...`);
       const { targetAddress: decryptedTargetAddress, calldata: rebuiltCalldata } = 
         await client.decryptExecutionPayload(intentId);
@@ -82,6 +83,7 @@ async function main() {
       console.log(`Decrypted target address: ${decryptedTargetAddress.slice(0, 6)}...${decryptedTargetAddress.slice(-4)}`);
       console.log(`Reassembled calldata: [redacted for confidentiality, length: ${rebuiltCalldata.length - 2} hex chars]`);
 
+      // 2. Forward transaction to the target protocol
       console.log(`Submitting execution transaction to target: ${decryptedTargetAddress.slice(0, 6)}...${decryptedTargetAddress.slice(-4)}...`);
       const nonce1 = await provider.getTransactionCount(relayerAddress, "pending");
       const executionTx = await dispatchWallet.sendTransaction({
@@ -93,6 +95,7 @@ async function main() {
       const receipt = await executionTx.wait();
       console.log(`Transaction confirmed in block ${receipt!.blockNumber}!`);
 
+      // 3. Mark intent as executed on-chain using SDK Client
       console.log(`Calling markExecuted for intent ID ${intentId} on-chain...`);
       const nonce2 = await provider.getTransactionCount(relayerAddress, "pending");
       const markTx = await client.markExecuted(intentId, nonce2);
@@ -102,40 +105,34 @@ async function main() {
 
     } catch (err: any) {
       console.error(`Error processing trigger for intent ID ${intentId}:`, err.message || err);
-    }
-  };
-
-  const scanTriggeredIntents = async () => {
-    try {
-      const nextId = await client.intentRelayContract.nextIntentId();
-      for (let id = 0n; id < nextId; id++) {
-        const intent = await client.intentRelayContract.intents(id);
-        if (Number(intent.status) === 1) { // Status.Triggered
-          await processExecution(id);
-        }
-      }
-    } catch (err: any) {
-      console.error("Error scanning triggered intents:", err.message || err);
+      processedIntents.delete(intentKey);
     }
   };
 
   const pollTriggerEvents = async () => {
     try {
-      await scanTriggeredIntents();
-
-      const currentBlock = await provider.getBlockNumber();
-      if (currentBlock < lastCheckedBlock) return;
-
-      const filter = client.intentRelayContract.filters.IntentTriggered();
-      const events = await client.intentRelayContract.queryFilter(filter, lastCheckedBlock, currentBlock);
-
-      for (const event of events) {
-        const log = event as any;
-        const intentId: bigint = log.args[0];
-        await processExecution(intentId);
+      // 1. On-Chain State Scan for any intent in Status.Triggered (1)
+      const nextId = await client.intentRelayContract.nextIntentId();
+      for (let id = 0n; id < nextId; id++) {
+        const intent = await client.intentRelayContract.intents(id);
+        if (Number(intent.status) === 1) { // Status.Triggered
+          await processSingleIntent(id);
+        }
       }
 
-      lastCheckedBlock = currentBlock + 1;
+      // 2. Event Log Filter Scan
+      const currentBlock = await provider.getBlockNumber();
+      if (currentBlock >= lastCheckedBlock) {
+        const filter = client.intentRelayContract.filters.IntentTriggered();
+        const events = await client.intentRelayContract.queryFilter(filter, lastCheckedBlock, currentBlock);
+
+        for (const event of events) {
+          const log = event as any;
+          const intentId: bigint = log.args[0];
+          await processSingleIntent(intentId);
+        }
+        lastCheckedBlock = currentBlock + 1;
+      }
     } catch {
       // Suppress transient RPC network errors during polling
     }
