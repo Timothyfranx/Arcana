@@ -105,7 +105,16 @@ async function main() {
 
     } catch (err: any) {
       console.error(`Error processing trigger for intent ID ${intentId}:`, err.message || err);
-      processedIntents.delete(intentKey);
+      // Call markExecuted so stale/invalid intents (e.g. expired Safe nonces) do not block the relayer loop
+      try {
+        console.log(`Cleaning up intent ID ${intentId} on-chain via markExecuted...`);
+        const cleanupNonce = await provider.getTransactionCount(relayerAddress, "pending");
+        const markTx = await client.markExecuted(intentId, cleanupNonce);
+        await markTx.wait();
+        console.log(`Intent ID ${intentId} marked as Executed/Cleaned up on-chain!`);
+      } catch (markErr: any) {
+        console.error(`Failed to mark intent ID ${intentId} as executed:`, markErr.message || markErr);
+      }
     }
   };
 
