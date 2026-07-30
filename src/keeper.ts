@@ -85,6 +85,8 @@ async function main() {
       const nextId = await client.intentRelayContract.nextIntentId();
       console.log(`Checking intents (0 to ${nextId - 1n})...`);
 
+      let currentNonce = await provider.getTransactionCount(keeperAddress, "pending");
+
       for (let intentId = 0n; intentId < nextId; intentId++) {
         const intent = await client.intentRelayContract.intents(intentId);
         // owner, triggerConditionHandle, compareOp, targetHandle, calldataLength, status, activeCheckHandle
@@ -102,8 +104,8 @@ async function main() {
               const proof = await client.pollDecryptionProof(activeCheckHandle, 3);
               console.log(`Proof found. Submitting verifyTrigger on-chain...`);
               
-              const nonce = Number(await provider.send("eth_getTransactionCount", [keeperAddress, "latest"]));
-              const tx = await client.verifyTrigger(intentId, proof, nonce);
+              const tx = await client.verifyTrigger(intentId, proof, currentNonce);
+              currentNonce++;
               console.log(`verifyTrigger sent: ${tx.hash}. Waiting for confirmation...`);
               await tx.wait();
               console.log(`verifyTrigger confirmed!`);
@@ -113,13 +115,13 @@ async function main() {
           } else {
             // No active check handle, let's request a trigger check
             console.log(`Encrypting current market price: ${currentPrice}...`);
-            const nonce = Number(await provider.send("eth_getTransactionCount", [keeperAddress, "latest"]));
             const { tx, currentPriceSecret } = await client.requestTriggerCheck(
               intentId,
               currentPrice,
               keeperAddress,
-              nonce
+              currentNonce
             );
+            currentNonce++;
             console.log(`Encrypted. Handle: ${currentPriceSecret.handle}`);
             console.log(`Requesting trigger check for intent #${intentId}...`);
             console.log(`requestTriggerCheck sent: ${tx.hash}. Waiting for confirmation...`);
