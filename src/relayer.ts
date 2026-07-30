@@ -41,14 +41,15 @@ async function main() {
   console.log(`NoxCompute Contract: ${noxComputeAddress}`);
   console.log(`Handle Gateway: ${gatewayUrl}`);
 
-  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const providerOptions = { staticNetwork: true, batchMaxCount: 1 };
+  const provider = new ethers.JsonRpcProvider(rpcUrl, undefined, providerOptions);
 
   const wallet = new ethers.Wallet(privateKey, provider);
   const relayerAddress = await wallet.getAddress();
   console.log(`Relayer Wallet Address: ${relayerAddress}`);
 
   const privateMempoolUrl = isLocal ? undefined : process.env.PRIVATE_MEMPOOL_RPC_URL;
-  const dispatchProvider = privateMempoolUrl ? new ethers.JsonRpcProvider(privateMempoolUrl) : provider;
+  const dispatchProvider = privateMempoolUrl ? new ethers.JsonRpcProvider(privateMempoolUrl, undefined, providerOptions) : provider;
   const dispatchWallet = new ethers.Wallet(privateKey, dispatchProvider);
 
   if (privateMempoolUrl) {

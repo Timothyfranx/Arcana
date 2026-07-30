@@ -46,7 +46,8 @@ async function main() {
   console.log(`Handle Gateway: ${gatewayUrl}`);
   console.log(`Mock Price: ${currentPrice}`);
 
-  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const providerOptions = { staticNetwork: true, batchMaxCount: 1 };
+  const provider = new ethers.JsonRpcProvider(rpcUrl, undefined, providerOptions);
   const wallet = new ethers.Wallet(privateKey, provider);
   const keeperAddress = await wallet.getAddress();
   console.log(`Keeper Wallet Address: ${keeperAddress}`);
