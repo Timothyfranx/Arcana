@@ -111,7 +111,12 @@ async function main() {
               await tx.wait();
               console.log(`verifyTrigger confirmed!`);
             } catch (err: any) {
-              console.log(`Proof not yet available or failed: ${err.message || err}`);
+              const msg = err.message || String(err);
+              if (msg.includes("execution reverted") || msg.includes("CALL_EXCEPTION")) {
+                console.log(`[Intent #${intentId}] Check proof submitted or status changed.`);
+              } else {
+                console.log(`Proof not yet available: ${msg.split("\n")[0]}`);
+              }
             }
           } else {
             // No active check handle, let's request a trigger check
